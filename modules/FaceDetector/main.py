@@ -52,7 +52,7 @@ def detectFace(rawRTSPCapture):
     #frameResized = imutils.resize(rawRTSPCapture,width=800)
     
     gray = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2GRAY)
-    faces = face_detection.detectMultiScale(gray,scaleFactor=1.3,minNeighbors=5,minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    faces = face_detection.detectMultiScale(gray,scaleFactor=1.1,minNeighbors=5,minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
     if len(faces) > 0:
         print("Faces detected: {}".format(len(faces)))
         storePicture(rawRTSPCapture)
