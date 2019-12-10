@@ -10,7 +10,7 @@ from flask import request
 import subprocess
 
 
-app = Flask('flaskshell')
+app = Flask(__name__)
 ip_whitelist = ['localhost']
 
 
@@ -21,6 +21,11 @@ def valid_ip():
         return True
     else:
         return False
+
+@app.route("/")
+def hello():
+  return "Go to localhost:8080/status/"
+
 
 
 @app.route('/status/')
@@ -50,4 +55,4 @@ def get_status():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=8080)

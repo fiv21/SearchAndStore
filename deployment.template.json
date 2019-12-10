@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "4.0",
+            "version": "4.3",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
