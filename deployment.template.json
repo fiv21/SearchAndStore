@@ -66,6 +66,16 @@
               "image": "${MODULES.FaceDetector}",
               "createOptions": {}
             }
+          },
+          "LogsModule": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "running",
+            "restartPolicy": "always",
+            "settings": {
+              "image": "${MODULES.LogsModule}",
+              "createOptions": {}
+            }
           }
         }
       }
@@ -74,7 +84,8 @@
       "properties.desired": {
         "schemaVersion": "1.0",
         "routes": {
-          "FaceDetectorToIoTHub": "FROM /messages/modules/FaceDetector/outputs/* INTO $upstream"
+          "FaceDetectorToIoTHub": "FROM /messages/modules/FaceDetector/outputs/* INTO $upstream",
+          "LogsModuleToIoTHub": "FROM /messages/modules/LogsModule/outputs/* INTO $upstream"
         },
         "storeAndForwardConfiguration": {
           "timeToLiveSecs": 7200
