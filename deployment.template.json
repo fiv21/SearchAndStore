@@ -68,13 +68,13 @@
             }
           },
           "LogsModule": {
-            "version": "1.1",
+            "version": "1.5",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "settings": {
               "image": "${MODULES.LogsModule}",
-              "createOptions": {}
+              "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8080/tcp\":[{\"HostPort\":\"8080\"}]}}}"
             }
           }
         }
