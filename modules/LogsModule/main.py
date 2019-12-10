@@ -11,7 +11,7 @@ import subprocess
 
 
 app = Flask(__name__)
-ip_whitelist = ['localhost']
+ip_whitelist = ['localhost', '127.0.0.1']
 
 
 

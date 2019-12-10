@@ -68,7 +68,7 @@
             }
           },
           "LogsModule": {
-            "version": "1.5",
+            "version": "1.6",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
