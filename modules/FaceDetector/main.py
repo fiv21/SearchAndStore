@@ -18,18 +18,9 @@ from keras.models import load_model
 from keras.preprocessing.image import img_to_array
 
 
-
-'''rtspUser = 'practia'
-rtspPass = 'global'
-#IPCam = '192.168.88.13'
-IPCam = '192.168.1.110'
-PortCam = 5554
-PathCam = '/video/h264'
-RTSP_cam = str('rtsp://'+rtspUser+':'+rtspPass+'@'+IPCam+':'+str(PortCam)+PathCam)'''
-
-#ambos codecs son h264
-#RTSP_cam1 = "rtsp://flanders:flanders123@192.168.1.125:443/videoMain"
-#RTSP_cam2 = "rtsp://admin:admin@192.168.1.115:554/video/h264"
+#codecs h264
+#RTSP_cam1 = "rtsp://flanders:flanders123@192.168.1.125:443/videoMain"   #Foscam FHD
+#RTSP_cam2 = "rtsp://admin:admin@192.168.1.115:554/video/h264"  #Cygnus 4K
 
 
 ############################################################################
