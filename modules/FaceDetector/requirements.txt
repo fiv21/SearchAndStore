@@ -1,0 +1,13 @@
+azure-iot-device~=2.0.0RC11
+opencv-python
+simple-http-server
+scipy
+azure-storage-blob
+numpy
+argparse
+imutils
+tensorflow
+keras
+dlib 
+face_recognition
+
