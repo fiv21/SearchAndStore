@@ -11,7 +11,7 @@ import subprocess
 
 
 app = Flask(__name__)
-ip_whitelist = ['localhost', '127.0.0.1']
+ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1']
 
 
 
@@ -31,9 +31,9 @@ def hello():
 @app.route('/status/')
 def get_status():
     if valid_ip():
-        command_check = "iotedge check"
-        command_modules = "iotedge FaceDetector"
-        command_docker = "docker ps -a"
+        command_check = "ls"
+        command_modules = "ls -a"
+        command_docker = "cat Dockerfile.amd64"
 
         try:
             result_check = subprocess.check_output(
@@ -45,7 +45,7 @@ def get_status():
         except subprocess.CalledProcessError as e:
             return "An error occurred while trying to fetch task status updates."
 
-        return 'check %s, modules %s, docker %s' % (result_check, result_modules, result_docker)
+        return """<b>check</b> %s, <br> modules %s, <br> docker <pre>%s</pre>""" % (result_check, result_modules, result_docker)
     else:
         return """<title>404 Not Found</title>
                <h1>Not Found</h1>
