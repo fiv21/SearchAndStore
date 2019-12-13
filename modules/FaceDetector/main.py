@@ -77,16 +77,18 @@ def storePicture(rtspCapture):
 
 def takePicture():
     try:
-        #camera1 = cv2.VideoCapture(RTSP_cam1)
+        camera1 = cv2.VideoCapture(RTSP_cam1)
         camera2 = cv2.VideoCapture(RTSP_cam2)
-        #frame1 = camera1.read()[1]
+        frame1 = camera1.read()[1]
         frame2 = camera2.read()[1]
-        #frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
-        #bigPicture = np.concatenate((frame1, frame2), axis = 0)
-        detectFace(frame2)
+        frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
+        bigPicture = np.concatenate((frame1, frame2), axis = 0)
+        detectFace(bigPicture)
+        camera1.release()
+        camera2.release()
     except:
         print("Exception error TAKING picture!")
-        time.sleep(1)
+        time.sleep(5)
 
 
 async def main():
@@ -120,10 +122,10 @@ async def main():
             while True:
                 try:
                     takePicture()
-                    time.sleep(5)
+                    time.sleep(3)
                 except:
-                    print("Waiting 10 seconds before restart...")
-                    time.sleep(10)
+                    print("Waiting 1 second before restart...")
+                    time.sleep(1)
 
 
 ###and don't change much more... I'm watching you -.-"

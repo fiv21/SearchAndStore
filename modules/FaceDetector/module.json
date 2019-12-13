@@ -1,10 +1,10 @@
 {
-  "$schema-version": "1.0.1",
+  "$schema-version": "1.0.0",
   "description": "",
   "image": {
     "repository": "iaepractiacontainerregistry.azurecr.io/facedetector",
     "tag": {
-      "version": "1.0.1",
+      "version": "1.0.0",
       "platforms": {
         "amd64": "./Dockerfile.amd64",
         "amd64.debug": "./Dockerfile.amd64.debug",
