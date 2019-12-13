@@ -72,23 +72,32 @@ def storePicture(rtspCapture):
         try:
             container_client.upload_blob(blobUploadedName, data, content_settings=ContentSettings(content_type='image/jpg'))
         except:
-            print("Exception error STORING picture!")
+            print("Exception error: STORING picture!")
             time.sleep(1)
 
 def takePicture():
     try:
         camera1 = cv2.VideoCapture(RTSP_cam1)
         camera2 = cv2.VideoCapture(RTSP_cam2)
+    except:
+        print("Exception error: opening stream over RTSP!")
+        time.sleep(5)
+    try:
         frame1 = camera1.read()[1]
         frame2 = camera2.read()[1]
+    except:
+        print("Exception error: taking the frame")
+    try:
         frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
         bigPicture = np.concatenate((frame1, frame2), axis = 0)
-        detectFace(bigPicture)
+        detectFace(frame2)
+    except:
+        print("Exception error: can't handle the big frame")
+    try:
         camera1.release()
         camera2.release()
     except:
-        print("Exception error TAKING picture!")
-        time.sleep(5)
+        print("Exception error: can't release the stream channel")
 
 
 async def main():
