@@ -27,13 +27,13 @@ from keras.preprocessing.image import img_to_array
 ############################################################################
 rtspUser1 = 'flanders'
 rtspPass1 = 'flanders123'
-IPCam1 = '192.168.1.125'
+IPCam1 = '192.168.10.125'
 PortCam1 = 443
 PathCam1 = '/videoMain'
 
 rtspUser2 = 'admin'
 rtspPass2 = 'admin'
-IPCam2 = '192.168.1.115'
+IPCam2 = '192.168.10.115'
 PortCam2 = 554
 PathCam2 = '/video/h264'
 
@@ -75,24 +75,27 @@ def storePicture(rtspCapture):
             print("Exception error: STORING picture!")
             time.sleep(1)
 
-def takePicture():
+def beginRecord():
     try:
         camera1 = cv2.VideoCapture(RTSP_cam1)
         camera2 = cv2.VideoCapture(RTSP_cam2)
     except:
         print("Exception error: opening stream over RTSP!")
-        time.sleep(5)
-    try:
-        frame1 = camera1.read()[1]
-        frame2 = camera2.read()[1]
-    except:
-        print("Exception error: taking the frame")
-    try:
-        frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
-        bigPicture = np.concatenate((frame1, frame2), axis = 0)
-        detectFace(frame2)
-    except:
-        print("Exception error: can't handle the big frame")
+        print("Restarting in 10 seconds...")
+        time.sleep(10)
+    while True:
+        try:
+            frame1 = camera1.read()[1]
+            frame2 = camera2.read()[1]
+        except:
+            print("Exception error: taking the frame")
+        try:
+            frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
+            bigPicture = np.concatenate((frame1, frame2), axis = 0)
+            detectFace(bigPicture)
+            time.sleep(3) #Take a picture every 3 seconds
+        except:
+            print("Exception error: can't handle the big frame")
     try:
         camera1.release()
         camera2.release()
@@ -130,10 +133,9 @@ async def main():
         def stdin_listener():
             while True:
                 try:
-                    takePicture()
-                    time.sleep(3)
+                    beginRecord()
                 except:
-                    print("Waiting 1 second before restart...")
+                    print("Can't start. Waiting 1 second before restart...")
                     time.sleep(1)
 
 
