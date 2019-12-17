@@ -27,13 +27,13 @@ from keras.preprocessing.image import img_to_array
 ############################################################################
 rtspUser1 = 'flanders'
 rtspPass1 = 'flanders123'
-IPCam1 = '192.168.10.125'
+IPCam1 = '192.168.1.125'
 PortCam1 = 443
 PathCam1 = '/videoMain'
 
 rtspUser2 = 'admin'
 rtspPass2 = 'admin'
-IPCam2 = '192.168.10.115'
+IPCam2 = '192.168.1.115'
 PortCam2 = 554
 PathCam2 = '/video/h264'
 
@@ -93,9 +93,10 @@ def beginRecord():
             frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
             bigPicture = np.concatenate((frame1, frame2), axis = 0)
             detectFace(bigPicture)
-            time.sleep(3) #Take a picture every 3 seconds
+            time.sleep(10) #Take a picture every 3 seconds
         except:
             print("Exception error: can't handle the big frame")
+            time.sleep(10)
     try:
         camera1.release()
         camera2.release()
