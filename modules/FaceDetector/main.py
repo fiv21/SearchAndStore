@@ -35,6 +35,7 @@ PortCam2 = os.getenv('PortCam2', '')
 PathCam2 = os.getenv('PathCam2', '')
 
 RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+PortCam1+PathCam1)
+#RTSP_cam1 = str('http://192.168.1.125:443/cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=flanders&pwd=flanders123')
 RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+PortCam2+PathCam2)
 
 connection_string=os.getenv('connection_string', '')
@@ -85,6 +86,7 @@ def faceCutter(proc, gray, countFace):
         new_im.paste(croppedFace, candidate)
     new_im.show()
     storePicture(np.array(new_im))
+    return 0
 
 def detectFace(rawRTSPCapture):    
     gray = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2GRAY)
@@ -95,7 +97,7 @@ def detectFace(rawRTSPCapture):
         print("Faces detected: {}".format(len(faces)))
         faceCutter(rawRTSPCapture, gray, len(faces))
     else:
-        return
+        return 0
 
 def storePicture(rtspCapture):
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
@@ -112,6 +114,7 @@ def storePicture(rtspCapture):
         except:
             print("Exception error: STORING picture!")
             time.sleep(1)
+    return 0
 
 
 def beginRecord():
@@ -122,26 +125,25 @@ def beginRecord():
         print("Exception error: opening stream over RTSP!")
         print("Restarting in 10 seconds...")
         time.sleep(10)
-    while True:
-            ret1, frame1 = camera1.read()
-            ret2, frame2 = camera2.read()
-            if ret1 and ret2:
-                bigPicture = np.concatenate((frame1, frame2), axis = 1)
-                detectFace(bigPicture)
-            else:
-                if ret1:
-                    detectFace(frame1)
-                if ret2:
-                    detectFace(frame2)
-            time.sleep(1) #Take a picture every second
-        except:
-            print("Exception error: can't handle the big frame")
-            try:
-                camera1.release()
-                camera2.release()
-            except:
-                print("Exception error: can't release the stream channel")
-            time.sleep(1)
+    ret1, frame1 = camera1.read()
+    ret2, frame2 = camera2.read()
+    if ret1 and ret2:
+        frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
+        bigPicture = np.concatenate((frame1, frame2), axis = 1)
+        detectFace(bigPicture)
+    else:
+        if ret1:
+            detectFace(frame1)
+        if ret2:
+            detectFace(frame2)
+    time.sleep(1) #Take a picture every second
+    try:
+        camera1.release()
+        camera2.release()
+    except:
+        print("Exception error: can't release the stream channel")
+    time.sleep(1)
+    return 0
 
 async def main():
     try:
@@ -172,12 +174,8 @@ async def main():
         ###everything goes HERE
         def stdin_listener():
             while True:
-                try:
-                    beginRecord()
-                except:
-                    cooldown = 10
-                    print("Can't start. Waiting {} second before restart...".format(cooldown))
-                    time.sleep(cooldown)
+                beginRecord()
+
 
 
 ###and don't change much more... I'm watching you -.-"
@@ -205,9 +203,9 @@ async def main():
         raise
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.close()
+    #loop = asyncio.get_event_loop()
+    #loop.run_until_complete(main())
+    #loop.close()
 
     # If using Python 3.7 or above, you can use following code instead:
-    # asyncio.run(main())
+     asyncio.run(main())

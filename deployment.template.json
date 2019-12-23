@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "7.0",
+            "version": "8.4",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -73,7 +73,7 @@
               "rtspPass2": {"value": "admin"},
               "IPCam2": {"value": "192.168.1.115"},
               "PortCam2": {"value": "554"},
-              "PathCam2": {"value": "/video/h264"},
+              "PathCam2": {"value": "/video/0"},
 
               "connection_string": {"value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"},
               "container": {"value": "image-frame"}
