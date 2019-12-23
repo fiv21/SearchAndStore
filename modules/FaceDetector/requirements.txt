@@ -10,4 +10,5 @@ tensorflow
 keras
 dlib 
 face_recognition
+pillow
 

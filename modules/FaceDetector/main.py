@@ -1,5 +1,7 @@
 import time
 import os
+import io
+import math
 import sys
 import asyncio
 from six.moves import input
@@ -9,55 +11,91 @@ import cv2
 import numpy as np
 import argparse
 import imutils
+from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from scipy.linalg import norm
 from scipy import sum, average
+import itertools
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings, ContainerClient, PublicAccess
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
 
+###############################################################################
+rtspUser1 = os.getenv('rtspUser1', '')
+rtspPass1 = os.getenv('rtspPass1', '')
+IPCam1 = os.getenv('IPCam1', '')
+PortCam1 = os.getenv('PortCam1', '')
+PathCam1 = os.getenv('PathCam1', '')
 
-#codecs h264
-#RTSP_cam1 = "rtsp://flanders:flanders123@192.168.1.125:443/videoMain"   #Foscam FHD
-#RTSP_cam2 = "rtsp://admin:admin@192.168.1.115:554/video/h264"  #Cygnus 4K
+rtspUser2 = os.getenv('rtspUser2', '')
+rtspPass2 = os.getenv('rtspPass2', '')
+IPCam2 = os.getenv('IPCam2', '')
+PortCam2 = os.getenv('PortCam2', '')
+PathCam2 = os.getenv('PathCam2', '')
 
+RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+PortCam1+PathCam1)
+RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+PortCam2+PathCam2)
 
-############################################################################
-############################################################################
-rtspUser1 = 'flanders'
-rtspPass1 = 'flanders123'
-IPCam1 = '192.168.1.125'
-PortCam1 = 443
-PathCam1 = '/videoMain'
-
-rtspUser2 = 'admin'
-rtspPass2 = 'admin'
-IPCam2 = '192.168.1.115'
-PortCam2 = 554
-PathCam2 = '/video/h264'
-
-RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+str(PortCam1)+PathCam1)
-RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+str(PortCam2)+PathCam2)
-##############################################################################
-
-
-connection_string='DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net'
-container='image-frame'
+connection_string=os.getenv('connection_string', '')
+container=os.getenv('container', '')
 
 detection_model_path = 'haarcascade_frontalface_default.xml'
 face_detection = cv2.CascadeClassifier(detection_model_path)
+##############################################################################
 
-def detectFace(rawRTSPCapture):
-    #frameResized = imutils.resize(rawRTSPCapture,width=800)
-    
+minNeighborsParam = 5
+scaleFactorParam = 1.3
+
+def faceCutter(proc, gray, countFace):
+    gridX = 7
+    gridY= 4
+    zero = "0"  
+    matrix = [ [ zero for i in range(gridX) ] for j in range(gridY) ]
+    stepT = int(proc.shape[0]/gridY) 
+    stepL = int(proc.shape[1]/gridX) 
+    m_x = 10
+    m_y = 10
+    img_w = 200
+    img_h = 300
+    i = 0
+    j = 0
+    new_im_w = gridX*img_w+m_x*gridX
+    new_im_h = gridY*img_h+m_y*gridY
+    new_im = Image.new('RGB', (new_im_w, new_im_h))
+    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam,
+                                            minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    for (x, y, w, h) in faces:
+        croppedFace = proc[y:y+h, x:x+w]
+        croppedFace = cv2.resize(croppedFace, (img_w, img_h), interpolation = cv2.INTER_AREA)
+        croppedFace = Image.fromarray(croppedFace)
+        auxAbsDist = 200000
+        auxL = 0 
+        auxK = 0
+        for k in range(0, gridY):
+            for l in range(0, gridX):
+                if matrix[k][l]==zero:
+                    relativeDistance = math.sqrt((stepT*k-(y+h*0.5))**2+(l*stepL-(x+w*0.5))**2)
+                    if(relativeDistance<auxAbsDist):
+                        auxL = l
+                        auxK = k
+                        candidate = (l*(img_w+m_x), (img_h+m_y)*k)
+                        auxAbsDist = relativeDistance
+        matrix[auxK][auxL] = 'busy'
+        new_im.paste(croppedFace, candidate)
+    new_im.show()
+    storePicture(np.array(new_im))
+
+def detectFace(rawRTSPCapture):    
     gray = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2GRAY)
-    faces = face_detection.detectMultiScale(gray,scaleFactor=1.1,minNeighbors=5,minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    rawRTSPCapture = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2RGB)
+    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam,
+                                            minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
     if len(faces) > 0:
         print("Faces detected: {}".format(len(faces)))
-        storePicture(rawRTSPCapture)
+        faceCutter(rawRTSPCapture, gray, len(faces))
     else:
-        takePicture()
+        return
 
 def storePicture(rtspCapture):
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
@@ -75,6 +113,7 @@ def storePicture(rtspCapture):
             print("Exception error: STORING picture!")
             time.sleep(1)
 
+
 def beginRecord():
     try:
         camera1 = cv2.VideoCapture(RTSP_cam1)
@@ -84,25 +123,25 @@ def beginRecord():
         print("Restarting in 10 seconds...")
         time.sleep(10)
     while True:
-        try:
-            frame1 = camera1.read()[1]
-            frame2 = camera2.read()[1]
-        except:
-            print("Exception error: taking the frame")
-        try:
-            frame2 = cv2.resize(frame2, (1920,1080), interpolation = cv2.INTER_AREA)
-            bigPicture = np.concatenate((frame1, frame2), axis = 0)
-            detectFace(bigPicture)
-            time.sleep(10) #Take a picture every 3 seconds
+            ret1, frame1 = camera1.read()
+            ret2, frame2 = camera2.read()
+            if ret1 and ret2:
+                bigPicture = np.concatenate((frame1, frame2), axis = 1)
+                detectFace(bigPicture)
+            else:
+                if ret1:
+                    detectFace(frame1)
+                if ret2:
+                    detectFace(frame2)
+            time.sleep(1) #Take a picture every second
         except:
             print("Exception error: can't handle the big frame")
-            time.sleep(10)
-    try:
-        camera1.release()
-        camera2.release()
-    except:
-        print("Exception error: can't release the stream channel")
-
+            try:
+                camera1.release()
+                camera2.release()
+            except:
+                print("Exception error: can't release the stream channel")
+            time.sleep(1)
 
 async def main():
     try:
@@ -136,15 +175,12 @@ async def main():
                 try:
                     beginRecord()
                 except:
-                    print("Can't start. Waiting 1 second before restart...")
-                    time.sleep(1)
+                    cooldown = 10
+                    print("Can't start. Waiting {} second before restart...".format(cooldown))
+                    time.sleep(cooldown)
 
 
 ###and don't change much more... I'm watching you -.-"
-
-
-
-
 
         # Schedule task for C2D Listener
         listeners = asyncio.gather(input1_listener(module_client))

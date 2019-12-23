@@ -58,10 +58,26 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "6.2",
+            "version": "7.0",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
+            "env":{
+              "rtspUser1": {"value": "flanders"},
+              "rtspPass1": {"value": "flanders123"},
+              "IPCam1": {"value": "192.168.1.125"},
+              "PortCam1": {"value": "443"},
+              "PathCam1": {"value": "/videoMain"},
+
+              "rtspUser2": {"value": "admin"},
+              "rtspPass2": {"value": "admin"},
+              "IPCam2": {"value": "192.168.1.115"},
+              "PortCam2": {"value": "554"},
+              "PathCam2": {"value": "/video/h264"},
+
+              "connection_string": {"value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"},
+              "container": {"value": "image-frame"}
+            },
             "settings": {
               "image": "${MODULES.FaceDetector}",
               "createOptions": {}
