@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "8.4",
+            "version": "11.7",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -76,7 +76,12 @@
               "PathCam2": {"value": "/video/0"},
 
               "connection_string": {"value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"},
-              "container": {"value": "image-frame"}
+              "container": {"value": "image-frame"},
+
+              "scheduleKey": { "value": "45x1b4g9SFXS3ZLEVpvq98i4uyVb8gbad0VbcAOavZYgE86JVRfLOQ4mm1H0jvz9AgHifIYNK9ekmmRsIXYRKg=="},
+              "scheduleUrl": { "value": "https://iaepractiacosmosdb.documents.azure.com:443/"},
+              "databaseIDCosmosDB": {"value": "framesAnalysis"},
+              "containerIDCosmosDB": {"value": "schedulerDB"}
             },
             "settings": {
               "image": "${MODULES.FaceDetector}",

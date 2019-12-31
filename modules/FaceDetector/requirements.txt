@@ -11,4 +11,5 @@ keras
 dlib 
 face_recognition
 pillow
-
+pandas
+azure-cosmos
