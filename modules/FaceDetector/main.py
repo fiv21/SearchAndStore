@@ -239,7 +239,7 @@ async def main():
         def stdin_listener():
             timeoutFlag = False
             counterTimeout = 0
-            logging.warning('System starting...')
+            logging.info('System starting...')
             while True:
                 state, horarioFinClase, timeoutInMinutes, delay = checkSchedule()
                 while (timeoutFlag==False and state == True):
