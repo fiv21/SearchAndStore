@@ -58,30 +58,59 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "11.7",
+            "version": "11.9",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
-            "env":{
-              "rtspUser1": {"value": "flanders"},
-              "rtspPass1": {"value": "flanders123"},
-              "IPCam1": {"value": "192.168.1.125"},
-              "PortCam1": {"value": "443"},
-              "PathCam1": {"value": "/videoMain"},
-
-              "rtspUser2": {"value": "admin"},
-              "rtspPass2": {"value": "admin"},
-              "IPCam2": {"value": "192.168.1.115"},
-              "PortCam2": {"value": "554"},
-              "PathCam2": {"value": "/video/0"},
-
-              "connection_string": {"value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"},
-              "container": {"value": "image-frame"},
-
-              "scheduleKey": { "value": "45x1b4g9SFXS3ZLEVpvq98i4uyVb8gbad0VbcAOavZYgE86JVRfLOQ4mm1H0jvz9AgHifIYNK9ekmmRsIXYRKg=="},
-              "scheduleUrl": { "value": "https://iaepractiacosmosdb.documents.azure.com:443/"},
-              "databaseIDCosmosDB": {"value": "framesAnalysis"},
-              "containerIDCosmosDB": {"value": "schedulerDB"}
+            "env": {
+              "rtspUser1": {
+                "value": "flanders"
+              },
+              "rtspPass1": {
+                "value": "flanders123"
+              },
+              "IPCam1": {
+                "value": "192.168.1.125"
+              },
+              "PortCam1": {
+                "value": "443"
+              },
+              "PathCam1": {
+                "value": "/videoMain"
+              },
+              "rtspUser2": {
+                "value": "admin"
+              },
+              "rtspPass2": {
+                "value": "admin"
+              },
+              "IPCam2": {
+                "value": "192.168.1.115"
+              },
+              "PortCam2": {
+                "value": "554"
+              },
+              "PathCam2": {
+                "value": "/video/0"
+              },
+              "connection_string": {
+                "value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"
+              },
+              "container": {
+                "value": "image-frame"
+              },
+              "scheduleKey": {
+                "value": "45x1b4g9SFXS3ZLEVpvq98i4uyVb8gbad0VbcAOavZYgE86JVRfLOQ4mm1H0jvz9AgHifIYNK9ekmmRsIXYRKg=="
+              },
+              "scheduleUrl": {
+                "value": "https://iaepractiacosmosdb.documents.azure.com:443/"
+              },
+              "databaseIDCosmosDB": {
+                "value": "framesAnalysis"
+              },
+              "containerIDCosmosDB": {
+                "value": "schedulerDB"
+              }
             },
             "settings": {
               "image": "${MODULES.FaceDetector}",
@@ -89,7 +118,7 @@
             }
           },
           "LogsModule": {
-            "version": "2.7",
+            "version": "3.1",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",

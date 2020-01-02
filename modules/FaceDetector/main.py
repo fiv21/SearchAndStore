@@ -28,9 +28,12 @@ import json
 import pandas as pd
 from pandas.io.json import json_normalize
 import uuid
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
-logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(levelname)s:-8s%(message)s", level=logging.INFO)
 
 ###############################################################################
 rtspUser1 = os.getenv('rtspUser1', '')
@@ -75,6 +78,12 @@ refreshSchedule = datetime.now()
 delay = 4
 #####################
 
+
+def notifyProfessor():
+
+
+
+
 def checkSchedule():
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
@@ -99,6 +108,9 @@ def checkSchedule():
                 timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
                 delay = (1.0/int(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase):
+                    nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
+                    nombreProfesor = str(df["profesor.nombre"])
+                    notifyProfessor()
                     state = True
                     logging.info('Class started!')
             else:

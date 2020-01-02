@@ -11,8 +11,10 @@ import subprocess
 
 
 app = Flask(__name__)
-ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1']
+ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1', '10.0.80.10']
 
+
+DEVICEID = str(os.environ["IOTEDGE_DEVICEID"])
 
 
 def valid_ip():
@@ -26,7 +28,9 @@ def valid_ip():
 def hello():
   return "Go to localhost:8080/status/"
 
-
+@app.route("/")
+def hello():
+  return "Go to localhost:8080/status/"
 
 @app.route('/status/')
 def get_status():
@@ -47,11 +51,9 @@ def get_status():
 
         return """<b>check</b> %s, <br> modules %s, <br> docker <pre>%s</pre>""" % (result_check, result_modules, result_docker)
     else:
-        return """<title>404 Not Found</title>
-               <h1>Not Found</h1>
-               <p>The requested URL was not found on the server.
-               If you entered the URL manually please check your
-               spelling and try again.</p>""", 404
+        return """<title>401 Unauthorized</title>
+                <h1> Unauthorized </h1>
+               <p>You're trying to access from a non whitelisted IP.</p>""", 401
 
 
 if __name__ == '__main__':
