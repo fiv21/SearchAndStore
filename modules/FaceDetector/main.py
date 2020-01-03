@@ -64,6 +64,14 @@ DEVICEID = str(os.environ["IOTEDGE_DEVICEID"])
 
 detection_model_path = 'haarcascade_frontalface_default.xml'
 face_detection = cv2.CascadeClassifier(detection_model_path)
+
+
+hostPort = os.getenv('hostPort', '')
+hostAddress = os.getenv('hostAddress', '') 
+
+sender_email = os.getenv('sender_email', '')
+password = os.getenv('senderEmailPassword', '') 
+
 ##############################################################################
 
 # FACE DETECTOR PARAMETERS #
@@ -79,7 +87,24 @@ delay = 4
 #####################
 
 
-def notifyProfessor():
+def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
+    message = MIMEMultipart("alternative")
+    html = """<html><head></head><body>\
+    <p><h1>Notificacion de inicio de analisis de clase</h1><br>""" + str(nombreProfesor) +""": la clase de\
+         """+nombreCurso+ """ ha comenzado<br>Ante cualquier consulta no dude en contactarnos, \
+        desde <a href="practia.global">Practia Global</a> ponemos sus ideas en movimiento.
+        </p>
+    </body>
+    </html>
+    """
+    messageBody = MIMEText(html, "html")
+    message.attach(messageBody)
+    mailserver = smtplib.SMTP(hostAddress, hostPort)
+    mailserver.ehlo()
+    mailserver.starttls()
+    mailserver.login(sender_email, password)
+    mailserver.sendmail(sender_email, mailProfesor, message.as_string())
+    mailserver.quit()
 
 
 
@@ -109,8 +134,10 @@ def checkSchedule():
                 delay = (1.0/int(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase):
                     nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
-                    nombreProfesor = str(df["profesor.nombre"])
-                    notifyProfessor()
+                    nombreProfesor = str(df["profesor.nombre"][y])
+                    mailProfesor = str(df['profesor.email'][y])
+                    logging.debug('Sending notification via e-mail')
+                    notifyProfessor(nombreProfesor, mailProfesor, nombreCurso)
                     state = True
                     logging.info('Class started!')
             else:
@@ -219,7 +246,7 @@ def beginRecord():
         camera2.release()
     except:
         logging.error("Can't release the stream channel")
-    time.sleep(1)
+        time.sleep(1)
     return 1
 
 async def main():
@@ -257,11 +284,16 @@ async def main():
                 while (timeoutFlag==False and state == True):
                     while(beginRecord() == 0):
                         counterTimeout+=1
-                        time.sleep(delay)
+                        time.sleep(1)
                         if counterTimeout == (timeoutInMinutes*60):
                             logging.error('NO FACES DETECTED, MODULE TIMEDOUT! WAIT UNTIL NEXT CLASS')
                             timeoutFlag = True
-                            break                      
+                            break  
+                        if(horarioFinClase-datetime.now()<=0):
+                            logging.info('Class has ended.')
+                            state = False   
+                            break   
+                    time.sleep(delay)  #wait delay time to take another picture            
                 if ((horarioFinClase-datetime.now()) == 0):
                     if timeoutFlag:
                         logging.info('Timeout done, restarting process and requesting the actual schedule in 1 minute')

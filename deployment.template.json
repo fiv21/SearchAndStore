@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "11.9",
+            "version": "12.0",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -110,6 +110,18 @@
               },
               "containerIDCosmosDB": {
                 "value": "schedulerDB"
+              },
+              "hostAddress": {
+                "value": "owa.pragmaconsultores.net"
+              },
+              "hostPort": {
+                "value": "2525"
+              },
+              "sender_email": {
+                "value": "iae_ai_id_ar@practia.global"
+              },
+              "senderEmailPassword": {
+                "value": "ID_510_mora"
               }
             },
             "settings": {
