@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+    <body>
+        <div>
+            <a href="/index">Home</a>
+            <a href="/help">Help</a>
+            <br>Room scheduler
+        </div>
+        <form method="POST">
+        <label>{{ form.name.label }}</label>
+        <br>{{ form.name}}
+        <br><label>{{ form.email.label }}</label>
+        <br>{{ form.email}}
+        <br><label>{{ form.aula.label }}</label>
+        <br>{{ form.aula }}
+        <br><label>{{ form.fpsRate.label }}</label>
+        <br>{{ form.fpsRate }}
+        <br><label>{{ form.institution.label }}</label>
+        <br>{{ form.institution }}
+        <div data-toggle="fieldset" id="clase-fieldset">
+            <table>
+                <thead>
+                <th> ID Curso </th>
+                <th> Nombre del Curso</th>
+                <th> Fecha (dd/mm/aaaa)</th>
+                <th> Hora Inicio </th>
+                <th> Hora Fin</th>
+                <th> Tiempo de Espera </th>
+                <th></th>
+                </thead>
+                <tbody>
+                {% for e in form.clase %}
+                    <tr data-toggle="fieldset-entry">
+                        <td>{{ e.cursoID }}</td>
+                        <td>{{ e.nombreCurso }}</td>
+                        <td>{{ e.date }}</td>
+                        <td>{{ e.horarioInicio }}</td>
+                        <td>{{ e.horarioFin }}</td>
+                        <td>{{ e.timeoutInMinutes }}</td>
+                        <td><button type="button" data-toggle="fieldset-remove-row" id="clase-{{loop.index0}}-remove">-</button></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <br>{{ form.clase.label }} <button type="button" data-toggle="fieldset-add-row" data-target="#clase-fieldset">+</button>
+        </div>
+        {{ form.hidden_tag() }}
+        <br>{{ form.button }}
+    </form>
+        <script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+        <script src="{{ url_for("static", filename="js/page.js") }}"></script>
+    </body>
+</html>

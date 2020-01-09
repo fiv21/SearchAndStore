@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "12.0",
+            "version": "13.3",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -94,34 +94,34 @@
                 "value": "/video/0"
               },
               "connection_string": {
-                "value": "DefaultEndpointsProtocol=https;AccountName=iaestoragedev;AccountKey=HACAChorM1ugThf0VsIEYnWFiYovsTQbnOxNUrClHJaa6+++h41nixS/8QYdqRKFH1A9YoONsEB3DGjy9/IiLw==;EndpointSuffix=core.windows.net"
+                "value": "$CONTAINER_REGISTRY_STORAGE_iaestorageconnectionstring"
               },
               "container": {
-                "value": "image-frame"
+                "value": "$CONTAINER_REGISTRY_BLOB_iaeblobstorageidentifier"
               },
               "scheduleKey": {
-                "value": "45x1b4g9SFXS3ZLEVpvq98i4uyVb8gbad0VbcAOavZYgE86JVRfLOQ4mm1H0jvz9AgHifIYNK9ekmmRsIXYRKg=="
+                "value": "$CONTAINER_REGISTRY_COSMOSKEY_iaecosmosdbkey"
               },
               "scheduleUrl": {
-                "value": "https://iaepractiacosmosdb.documents.azure.com:443/"
+                "value": "$CONTAINER_REGISTRY_COSMOSENDPOINT_iaecosmosendpoint"
               },
               "databaseIDCosmosDB": {
-                "value": "framesAnalysis"
+                "value": "$CONTAINER_REGISTRY_COSMOSDB_iaecosmosdb"
               },
               "containerIDCosmosDB": {
-                "value": "schedulerDB"
+                "value": "$CONTAINER_REGISTRY_COSMOSCONTAINERID_iaecosmoscontainer"
               },
-              "hostAddress": {
-                "value": "owa.pragmaconsultores.net"
+              "SMTPhostAddress": {
+                "value": "$CONTAINER_REGISTRY_SMTPSERVER_iaesmtpoutgoingserver"
               },
-              "hostPort": {
-                "value": "2525"
+              "SMTPhostPort": {
+                "value": "$CONTAINER_REGISTRY_SMTPPORT_iaesmtpoutgoingport"
               },
               "sender_email": {
-                "value": "iae_ai_id_ar@practia.global"
+                "value": "$CONTAINER_REGISTRY_EMAILUSER_iaeemailusersender"
               },
               "senderEmailPassword": {
-                "value": "ID_510_mora"
+                "value": "$CONTAINER_REGISTRY_EMAILPASS_iaeemailpasswordsender"
               }
             },
             "settings": {
@@ -138,6 +138,36 @@
               "image": "${MODULES.LogsModule}",
               "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8080/tcp\":[{\"HostPort\":\"8080\"}]}}}"
             }
+          },
+          "ScheduleNewClass": {
+            "version": "1.0",
+            "type": "docker",
+            "status": "running",
+            "restartPolicy": "always",
+            "env": {
+              "value1CamaraIP": {
+                "value": "$CONTAINER_REGISTRY_MACADDRIPCAMERA2_iaeipcameramac2"
+              },
+              "value2CamaraIP": {
+                "value": "$CONTAINER_REGISTRY_MACADDRIPCAMERA2_iaeipcameramac2"
+              },
+              "scheduleKey": {
+                "value": "$CONTAINER_REGISTRY_COSMOSKEY_iaecosmosdbkey"
+              },
+              "scheduleUrl": {
+                "value": "$CONTAINER_REGISTRY_COSMOSENDPOINT_iaecosmosendpoint"
+              },
+              "databaseIDCosmosDB": {
+                "value": "$CONTAINER_REGISTRY_COSMOSDB_iaecosmosdb"
+              },
+              "containerIDCosmosDB": {
+                "value": "$CONTAINER_REGISTRY_COSMOSCONTAINERID_iaecosmoscontainer"
+              }
+            },
+            "settings": {
+              "image": "${MODULES.ScheduleNewClass}",
+              "createOptions": {}
+            }
           }
         }
       }
@@ -147,7 +177,8 @@
         "schemaVersion": "1.0",
         "routes": {
           "FaceDetectorToIoTHub": "FROM /messages/modules/FaceDetector/outputs/* INTO $upstream",
-          "LogsModuleToIoTHub": "FROM /messages/modules/LogsModule/outputs/* INTO $upstream"
+          "LogsModuleToIoTHub": "FROM /messages/modules/LogsModule/outputs/* INTO $upstream",
+          "ScheduleNewClassToIoTHub": "FROM /messages/modules/ScheduleNewClass/outputs/* INTO $upstream"
         },
         "storeAndForwardConfiguration": {
           "timeToLiveSecs": 7200

@@ -13,3 +13,4 @@ face_recognition
 pillow
 pandas
 azure-cosmos
+schedule

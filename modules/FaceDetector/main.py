@@ -1,22 +1,11 @@
-import time
-import logging
-import os
-import io
-import math
-import sys
-import asyncio
+import time, os, io, math, sys, asyncio, threading, random, cv2, argparse
+import sched, logging, imutils, itertools, json, uuid, smtplib, ssl
 from six.moves import input
-import threading
-import random
-import cv2
 import numpy as np
-import argparse
-import imutils
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta
 from scipy.linalg import norm
 from scipy import sum, average
-import itertools
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings, ContainerClient, PublicAccess
 from keras.models import load_model
@@ -24,16 +13,12 @@ from keras.preprocessing.image import img_to_array
 import azure.cosmos.cosmos_client as cosmos_client
 import azure.cosmos.errors as errors
 import azure.cosmos.http_constants as http_constants
-import json
 import pandas as pd
 from pandas.io.json import json_normalize
-import uuid
-import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-
-logging.basicConfig(format="%(asctime)s - %(levelname)s:-8s%(message)s", level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO)
 
 ###############################################################################
 rtspUser1 = os.getenv('rtspUser1', '')
@@ -66,8 +51,8 @@ detection_model_path = 'haarcascade_frontalface_default.xml'
 face_detection = cv2.CascadeClassifier(detection_model_path)
 
 
-hostPort = os.getenv('hostPort', '')
-hostAddress = os.getenv('hostAddress', '') 
+SMTPhostPort = os.getenv('SMTPhostPort', '')
+SMTPhostAddress = os.getenv('SMTPhostAddress', '') 
 
 sender_email = os.getenv('sender_email', '')
 password = os.getenv('senderEmailPassword', '') 
@@ -99,7 +84,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
     """
     messageBody = MIMEText(html, "html")
     message.attach(messageBody)
-    mailserver = smtplib.SMTP(hostAddress, hostPort)
+    mailserver = smtplib.SMTP(SMTPhostAddress, SMTPhostPort)
     mailserver.ehlo()
     mailserver.starttls()
     mailserver.login(sender_email, password)
@@ -108,8 +93,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
 
 
 
-
-def checkSchedule():
+def checkSchedule(status):
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M:%S")), '%d/%m/%Y %H:%M:%S')
@@ -132,7 +116,7 @@ def checkSchedule():
                                                     df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M:%S')
                 timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
                 delay = (1.0/int(df.fpsRate[y]))
-                if (inicioClase <= now and now <= finClase):
+                if (inicioClase <= now and now <= finClase and status == False):
                     nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
                     nombreProfesor = str(df["profesor.nombre"][y])
                     mailProfesor = str(df['profesor.email'][y])
@@ -142,10 +126,11 @@ def checkSchedule():
                     logging.info('Class started!')
             else:
                 state = False
+                inicioClase = now
                 finClase = now
                 timeoutInMinutes = 1
                 delay = 4
-            return (state, finClase, timeoutInMinutes, delay)
+            return (state, inicioClase, finClase, timeoutInMinutes, delay)
 
 
 def faceCutter(proc, gray, countFace):
@@ -192,7 +177,7 @@ def detectFace(rawRTSPCapture):
     faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam,
                                             minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
     if len(faces) > 0:
-        print("Faces detected: {}".format(len(faces)))
+        logging.debug('At least 1 face detected')
         faceCutter(rawRTSPCapture, gray, len(faces))
         return 1
     else:
@@ -210,6 +195,7 @@ def storePicture(rtspCapture):
     with open(file_path_abs, "rb") as data:
         try:
             container_client.upload_blob(blobUploadedName, data, content_settings=ContentSettings(content_type='image/jpg'))
+            logging.debug('Image Stored in Blob Storage')
         except:
             logging.error('STORING picture!')
             time.sleep(1)
@@ -225,6 +211,7 @@ def beginRecord():
         logging.critical('Exception error: opening stream over RTSP!')
         logging.debug('Restarting in 10 seconds...')
         time.sleep(10)
+        return 0
     ret1, frame1 = camera1.read()
     ret2, frame2 = camera2.read()
     if ret1 and ret2:
@@ -247,6 +234,7 @@ def beginRecord():
     except:
         logging.error("Can't release the stream channel")
         time.sleep(1)
+        return 0
     return 1
 
 async def main():
@@ -277,28 +265,33 @@ async def main():
         ###everything goes HERE
         def stdin_listener():
             timeoutFlag = False
+            state = False
             counterTimeout = 0
             logging.info('System starting...')
             while True:
-                state, horarioFinClase, timeoutInMinutes, delay = checkSchedule()
-                while (timeoutFlag==False and state == True):
-                    while(beginRecord() == 0):
+                if (state = False):
+                    state, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
+                while ((timeoutFlag==False) and (state == True)):
+                    grabando = beginRecord()
+                    while(grabando == 0):
                         counterTimeout+=1
                         time.sleep(1)
-                        if counterTimeout == (timeoutInMinutes*60):
+                        if counterTimeout >= (timeoutInMinutes*60):
                             logging.error('NO FACES DETECTED, MODULE TIMEDOUT! WAIT UNTIL NEXT CLASS')
                             timeoutFlag = True
                             break  
-                        if(horarioFinClase-datetime.now()<=0):
+                        logging.debug('No face founded in the picture, retrying...')
+                    if(horarioFinClase<datetime.now()):
                             logging.info('Class has ended.')
                             state = False   
                             break   
                     time.sleep(delay)  #wait delay time to take another picture            
-                if ((horarioFinClase-datetime.now()) == 0):
+                if (horarioFinClase<datetime.now()):
                     if timeoutFlag:
                         logging.info('Timeout done, restarting process and requesting the actual schedule in 1 minute')
                     timeoutFlag = False
                     counterTimeout = 0
+                    state = False
                 time.sleep(60)
 
 
