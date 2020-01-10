@@ -130,7 +130,7 @@
             }
           },
           "LogsModule": {
-            "version": "3.2",
+            "version": "3.3",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -140,7 +140,7 @@
             }
           },
           "ScheduleNewClass": {
-            "version": "1.1",
+            "version": "1.3",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",

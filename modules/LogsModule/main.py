@@ -28,28 +28,24 @@ def valid_ip():
 def hello():
   return "Go to localhost:8080/status/"
 
-@app.route("/")
-def hello():
-  return "Go to localhost:8080/status/"
-
 @app.route('/status/')
 def get_status():
     if valid_ip():
-        command_check = "ls"
-        command_modules = "ls -a"
-        command_docker = "cat Dockerfile.amd64"
+        command_check = "iotedge list"
+        command_modules = "iotedge check"
+        command_date = "datetime"
 
         try:
             result_check = subprocess.check_output(
                 [command_check], shell=True)
             result_modules = subprocess.check_output(
                 [command_modules], shell=True)
-            result_docker = subprocess.check_output(
-                [command_docker], shell=True)
+            result_date = subprocess.check_output(
+                [command_date], shell=True)
         except subprocess.CalledProcessError as e:
             return "An error occurred while trying to fetch task status updates."
 
-        return """<b>check</b> %s, <br> modules %s, <br> docker <pre>%s</pre>""" % (result_check, result_modules, result_docker)
+        return """<b><h1>IoT Edge module List:</h1></b><br> <pre>%s</pre>, <br><br> <b><h1>IoT Edge:</h1></b>  <br> <pre>%s</pre>, <br><br> <b><h1>Date:</h1></b> <pre>%s</pre>""" % (result_check, result_modules, result_date)
     else:
         return """<title>401 Unauthorized</title>
                 <h1> Unauthorized </h1>
