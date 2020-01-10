@@ -3,6 +3,5 @@ Flask-WTF
 Flask
 WTForms
 pandas
-jsonlib
 Flask-Bootstrap
 azure-cosmos
