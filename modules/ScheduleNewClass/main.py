@@ -70,8 +70,6 @@ def getJSONexample():
             "itinerario": []
           }
         }'''
-    course['camarasIP']['MAC1']['value'] = str(value1CamaraIP)
-    course['camarasIP']['MAC2']['value'] = str(value2CamaraIP)
     course = json.loads(course)
     return course
 
@@ -178,4 +176,4 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=80)
+    app.run(debug=True, host='0.0.0.0', port=8086)

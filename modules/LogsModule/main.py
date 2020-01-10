@@ -31,9 +31,9 @@ def hello():
 @app.route('/status/')
 def get_status():
     if valid_ip():
-        command_check = "iotedge list"
-        command_modules = "iotedge check"
-        command_date = "datetime"
+        command_check = "ls"
+        command_modules = "ls -a"
+        command_date = "date"
 
         try:
             result_check = subprocess.check_output(

@@ -1,7 +1,8 @@
 azure-iot-device~=2.0.0
-Flask-WTF
 Flask
+Flask-WTF
 WTForms
 pandas
 Flask-Bootstrap
 azure-cosmos
+WTForms-Components

@@ -94,6 +94,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
 
 
 def checkSchedule(status):
+    state = False
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
@@ -115,7 +116,7 @@ def checkSchedule(status):
                 finClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
                                                     df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
                 timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
-                delay = (1.0/int(df.fpsRate[y]))
+                delay = (1.0/float(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase and status == False):
                     nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
                     nombreProfesor = str(df["profesor.nombre"][y])
@@ -270,8 +271,9 @@ async def main():
             logging.info('System starting...')
             while True:
                 if (state == False):
-                    state, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
-                while ((timeoutFlag==False) and (state == True)):
+                    status, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
+                    state = status
+                while ((timeoutFlag==False) and (status == True)):
                     grabando = beginRecord()
                     while(grabando == 0):
                         counterTimeout+=1
@@ -283,7 +285,8 @@ async def main():
                         logging.debug('No face founded in the picture, retrying...')
                     if(horarioFinClase<datetime.now()):
                             logging.info('Class has ended.')
-                            state = False   
+                            state = False
+                            status = state   
                             break   
                     time.sleep(delay)  #wait delay time to take another picture            
                 if (horarioFinClase<datetime.now()):
@@ -292,6 +295,7 @@ async def main():
                     timeoutFlag = False
                     counterTimeout = 0
                     state = False
+                    status = state
                 time.sleep(60)
 
 
