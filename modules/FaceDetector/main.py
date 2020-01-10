@@ -66,7 +66,7 @@ scaleFactorParam = 1.3
 
 # GET DATETIME DATA #
 today = date.today().strftime("%d/%m/%Y")
-now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M:%S")), "%d/%m/%Y %H:%M:%S")
+now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), "%d/%m/%Y %H:%M")
 refreshSchedule = datetime.now()
 delay = 4
 #####################
@@ -96,7 +96,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
 def checkSchedule(status):
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
-    now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M:%S")), '%d/%m/%Y %H:%M:%S')
+    now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
     getLastUpdate = "SELECT TOP 1 * FROM "+ str(containerIDCosmosDB) + " s WHERE s.edgeDeviceUID = '"+ str(DEVICEID) +"' ORDER BY s._ts DESC"
     FEEDOPTIONS = {}
     FEEDOPTIONS["enableCrossPartitionQuery"] = True
@@ -111,9 +111,9 @@ def checkSchedule(status):
         for x in range(len(df["profesor.itinerario"][y])):
             if (df["profesor.itinerario"][y][x]['diaMesAnio'] == today):
                 inicioClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
-                                                    df["profesor.itinerario"][y][x]['horarioInicio']), '%d/%m/%Y %H:%M:%S')
+                                                    df["profesor.itinerario"][y][x]['horarioInicio']), '%d/%m/%Y %H:%M')
                 finClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
-                                                    df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M:%S')
+                                                    df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
                 timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
                 delay = (1.0/int(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase and status == False):
@@ -269,7 +269,7 @@ async def main():
             counterTimeout = 0
             logging.info('System starting...')
             while True:
-                if (state = False):
+                if (state == False):
                     state, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
                 while ((timeoutFlag==False) and (state == True)):
                     grabando = beginRecord()

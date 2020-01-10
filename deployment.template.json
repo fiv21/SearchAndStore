@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "13.3",
+            "version": "13.5",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -130,7 +130,7 @@
             }
           },
           "LogsModule": {
-            "version": "3.1",
+            "version": "3.2",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -140,7 +140,7 @@
             }
           },
           "ScheduleNewClass": {
-            "version": "1.0",
+            "version": "1.1",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
