@@ -71,10 +71,16 @@ refreshSchedule = datetime.now()
 delay = 4
 #####################
 
+# GLOBAL DISGUSTING PARAMETERS #
+lastNombreProfesor = "NAME"
+lastMailProfesor = "NAME@DOMAIN.DOT"
+lastNombreCurso = "COURSENAME"
+################################
 
-def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
+def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
     message = MIMEMultipart("alternative")
-    html = """<html><head></head><body>\
+    if inicio == True:
+        html = """<html><head></head><body>\
     <p><h1>Notificacion de inicio de analisis de clase</h1><br>""" + str(nombreProfesor) +""": la clase de\
          """+nombreCurso+ """ ha comenzado<br>Ante cualquier consulta no dude en contactarnos, \
         desde <a href="practia.global">Practia Global</a> ponemos sus ideas en movimiento.
@@ -82,6 +88,16 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
     </body>
     </html>
     """
+    else:
+        html = """<html><head></head><body>\
+    <p><h1>Notificacion de Fin de analisis de clase</h1><br>""" + str(nombreProfesor) +""": la clase de\
+         """+nombreCurso+ """ ha finalizado<br>Ante cualquier consulta no dude en contactarnos, \
+        desde <a href="practia.global">Practia Global</a> ponemos sus ideas en movimiento.
+        </p>
+    </body>
+    </html>
+    """
+
     messageBody = MIMEText(html, "html")
     message.attach(messageBody)
     mailserver = smtplib.SMTP(SMTPhostAddress, SMTPhostPort)
@@ -95,6 +111,9 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso):
 
 def checkSchedule(status):
     state = False
+    global lastNombreProfesor
+    global lastMailProfesor
+    global lastNombreCurso
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
@@ -122,7 +141,10 @@ def checkSchedule(status):
                     nombreProfesor = str(df["profesor.nombre"][y])
                     mailProfesor = str(df['profesor.email'][y])
                     logging.debug('Sending notification via e-mail')
-                    notifyProfessor(nombreProfesor, mailProfesor, nombreCurso)
+                    notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, True)
+                    lastNombreProfesor = nombreProfesor
+                    lastMailProfesor = mailProfesor
+                    lastNombreCurso = nombreCurso
                     state = True
                     logging.info('Class started!')
             else:
@@ -268,6 +290,9 @@ async def main():
             timeoutFlag = False
             state = False
             counterTimeout = 0
+            global lastNombreProfesor
+            global lastMailProfesor
+            global lastNombreCurso
             logging.info('System starting...')
             while True:
                 if (state == False):
@@ -285,6 +310,7 @@ async def main():
                         logging.debug('No face founded in the picture, retrying...')
                     if(horarioFinClase<datetime.now()):
                             logging.info('Class has ended.')
+                            notifyProfessor(lastNombreProfesor, lastMailProfesor, lastNombreCurso, False)
                             state = False
                             status = state   
                             break   
