@@ -20,8 +20,10 @@
         <div data-toggle="fieldset" id="clase-fieldset">
             <table>
                 <thead>
+                <th> ID Programa </th>
                 <th> ID Curso </th>
                 <th> Nombre del Curso</th>
+                <th> ID Clase </th>
                 <th> Fecha (dd/mm/aaaa)</th>
                 <th> Hora Inicio </th>
                 <th> Hora Fin</th>
@@ -31,8 +33,10 @@
                 <tbody>
                 {% for e in form.clase %}
                     <tr data-toggle="fieldset-entry">
+                        <td>{{ e.programaID }}</td>
                         <td>{{ e.cursoID }}</td>
                         <td>{{ e.nombreCurso }}</td>
+                        <td>{{ e.claseID }}</td>
                         <td>{{ e.date }}</td>
                         <td>{{ e.horarioInicio }}</td>
                         <td>{{ e.horarioFin }}</td>

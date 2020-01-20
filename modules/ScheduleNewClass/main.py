@@ -100,23 +100,28 @@ def fromMultiDicToJSON(data):
    numero = 0
    parsear = 'clase-'+str(numero)
    while(data.get(str(parsear+'-cursoID'))!=None):
+      programaID = data.get(str(parsear+'-programaID'))
       cursoID = data.get(str(parsear+'-cursoID'))
       nombreCurso = data.get(str(parsear+'-nombreCurso'))
+      claseID = data.get(str(parsear+'-claseID'))
       diaMesAnio = data.get(str(parsear+'-date'))
       horarioInicio = data.get(str(parsear+'-horarioInicio'))
       horarioFin = data.get(str(parsear+'-horarioFin'))
       timeoutInMinutes = data.get(str(parsear+'-timeoutInMinutes'))
-      #cargar = '{cursoID: "' + cursoID + '", nombreCurso: "'+nombreCurso+'", diaMesAnio: "'+diaMesAnio+'", horarioInicio: "'+horarioInicio+'", horarioFin: "'+horarioFin+'", timeoutInMinutes: "'+timeoutInMinutes+'"}'
       cargar =  {
+                "programaID": "999",
                 "cursoID": "992",
                 "nombreCurso": "Testing de Domingo por la noche",
+                "claseID":"999",
                 "diaMesAnio": "30/12/2019",
                 "horarioInicio": "15:30:00",
                 "horarioFin": "15:40:00",
                 "timeoutInMinutes": "1"
             }
-      cargar['cursoID']= cursoID
+      cargar['programaID'] = programaID
+      cargar['cursoID'] = cursoID
       cargar['nombreCurso'] = nombreCurso
+      cargar['claseID'] = claseID
       cargar['diaMesAnio'] = diaMesAnio
       cargar['horarioInicio'] = horarioInicio
       cargar['horarioFin'] = horarioFin
@@ -129,8 +134,10 @@ def fromMultiDicToJSON(data):
 
 
 class scheduleForm(Form):
+   programaID = IntegerField('ID Programa en Curso')
    cursoID = IntegerField('ID Curso')
    nombreCurso = StringField('Nombre del Curso') #, validators=[DataRequired()])
+   claseID = IntegerField('ID Clase')
    date = DateField('Fecha',format='%d-%m-%y') #, validators=[DataRequired()])
    horarioInicio = TimeField('Horario de Inicio') #, validators=[DataRequired()])
    horarioFin = TimeField('Horario de Finalizacion') #, validators=[DataRequired()])

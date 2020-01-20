@@ -75,6 +75,10 @@ delay = 4
 lastNombreProfesor = "NAME"
 lastMailProfesor = "NAME@DOMAIN.DOT"
 lastNombreCurso = "COURSENAME"
+ProgramID = "999"
+MatterID = "999"
+LessonID = "999"
+InstitutionID = "Practia Global"
 ################################
 
 def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
@@ -83,7 +87,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
         html = """<html><head></head><body>\
     <p><h1>Notificacion de inicio de analisis de clase</h1><br>""" + str(nombreProfesor) +""": la clase de\
          """+nombreCurso+ """ ha comenzado<br>Ante cualquier consulta no dude en contactarnos, \
-        desde <a href="practia.global">Practia Global</a> ponemos sus ideas en movimiento.
+        desde <a href="practia.global">Practia Global</a>.
         </p>
     </body>
     </html>
@@ -92,7 +96,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
         html = """<html><head></head><body>\
     <p><h1>Notificacion de Fin de analisis de clase</h1><br>""" + str(nombreProfesor) +""": la clase de\
          """+nombreCurso+ """ ha finalizado<br>Ante cualquier consulta no dude en contactarnos, \
-        desde <a href="practia.global">Practia Global</a> ponemos sus ideas en movimiento.
+        desde <a href="practia.global">Practia Global</a>.
         </p>
     </body>
     </html>
@@ -114,10 +118,14 @@ def checkSchedule(status):
     global lastNombreProfesor
     global lastMailProfesor
     global lastNombreCurso
+    global ProgramID
+    global MatterID
+    global LessonID
+    global InstitutionID
     logging.info('Checking the schedule')
     today = date.today().strftime("%d/%m/%Y")
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
-    getLastUpdate = "SELECT TOP 1 * FROM "+ str(containerIDCosmosDB) + " s WHERE s.edgeDeviceUID = '"+ str(DEVICEID) +"' ORDER BY s._ts DESC"
+    getLastUpdate = "SELECT * FROM "+ str(containerIDCosmosDB) + " s WHERE s.edgeDeviceUID = '"+ str(DEVICEID) +"' ORDER BY s._ts DESC"
     FEEDOPTIONS = {}
     FEEDOPTIONS["enableCrossPartitionQuery"] = True
     QUERY = {
@@ -135,6 +143,18 @@ def checkSchedule(status):
                 finClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
                                                     df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
                 timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
+                try:
+                    ProgramID = df['profesor.itinerario'][y][x]['programaID']
+                    MatterID = df['profesor.itinerario'][y][x]['cursoID']
+                    LessonID = df['profesor.itinerario'][y][x]['claseID']
+                    InstitutionID = df['institucion'][y]
+                except:
+                    logging.error("Failure getting metadata!")
+                    ProgramID = "999"
+                    MatterID = "999"
+                    LessonID = "999"
+                    InstitutionID = "Practia Global"
+                    pass
                 delay = (1.0/float(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase and status == False):
                     nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
@@ -153,7 +173,7 @@ def checkSchedule(status):
                 finClase = now
                 timeoutInMinutes = 1
                 delay = 4
-            return (state, inicioClase, finClase, timeoutInMinutes, delay)
+    return (state, inicioClase, finClase, timeoutInMinutes, delay)
 
 
 def faceCutter(proc, gray, countFace):
@@ -207,6 +227,10 @@ def detectFace(rawRTSPCapture):
         return 0
 
 def storePicture(rtspCapture):
+    global ProgramID
+    global MatterID
+    global LessonID
+    fileMetadata = {"InstitutionID":InstitutionID, "ProgramID":ProgramID, "MatterID":MatterID, "LessonID":LessonID}
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
     container_client = blob_service_client.get_container_client(container)
     now = datetime.now()
@@ -217,7 +241,9 @@ def storePicture(rtspCapture):
     blobUploadedName = ts + ".jpg"
     with open(file_path_abs, "rb") as data:
         try:
-            container_client.upload_blob(blobUploadedName, data, content_settings=ContentSettings(content_type='image/jpg'))
+            container_client.upload_blob(blobUploadedName, 
+                                            data, content_settings=ContentSettings(content_type='image/jpg'),
+                                            metadata=fileMetadata)
             logging.debug('Image Stored in Blob Storage')
         except:
             logging.error('STORING picture!')
@@ -322,7 +348,7 @@ async def main():
                     counterTimeout = 0
                     state = False
                     status = state
-                time.sleep(60)
+                time.sleep(30)
 
 
 
