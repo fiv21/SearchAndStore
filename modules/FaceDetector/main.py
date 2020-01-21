@@ -36,8 +36,8 @@ PathCam2 = os.getenv('PathCam2', '')
 RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+PortCam1+PathCam1)
 RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+PortCam2+PathCam2)
 
-connection_string=os.getenv('connection_string', '')
-container=os.getenv('container', '')
+connection_string=os.getenv('local_connection_string', '')
+container=os.getenv('local_container', '')
 
 scheduleKey = os.getenv('scheduleKey', '')
 scheduleUrl =  os.getenv('scheduleUrl', '')
