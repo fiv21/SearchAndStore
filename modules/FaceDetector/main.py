@@ -18,7 +18,7 @@ from pandas.io.json import json_normalize
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.ERROR)
 
 ###############################################################################
 rtspUser1 = os.getenv('rtspUser1', '')
@@ -173,7 +173,7 @@ def checkSchedule(status):
                 finClase = now
                 timeoutInMinutes = 1
                 delay = 4
-    return (state, inicioClase, finClase, timeoutInMinutes, delay)
+            return (state, inicioClase, finClase, timeoutInMinutes, delay)
 
 
 def faceCutter(proc, gray, countFace):
@@ -265,7 +265,7 @@ def beginRecord():
     ret2, frame2 = camera2.read()
     if ret1 and ret2:
         logging.debug('Taking picture with 2 cameras...')
-        frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
+        #frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
         bigPicture = np.concatenate((frame1, frame2), axis = 1)
         detectTimeout = detectFace(bigPicture)
     else:
@@ -348,7 +348,7 @@ async def main():
                     counterTimeout = 0
                     state = False
                     status = state
-                time.sleep(30)
+                time.sleep(60)
 
 
 

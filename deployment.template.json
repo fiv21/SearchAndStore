@@ -58,25 +58,25 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "14.9",
+            "version": "16.2",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "env": {
               "rtspUser1": {
-                "value": "flanders"
+                "value": "admin"
               },
               "rtspPass1": {
-                "value": "flanders123"
+                "value": "admin"
               },
               "IPCam1": {
-                "value": "192.168.1.125"
+                "value": "192.168.1.109"
               },
               "PortCam1": {
-                "value": "443"
+                "value": "554"
               },
               "PathCam1": {
-                "value": "/videoMain"
+                "value": "/video/0"
               },
               "rtspUser2": {
                 "value": "admin"
@@ -138,7 +138,7 @@
             }
           },
           "LogsModule": {
-            "version": "3.8",
+            "version": "3.9",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -148,7 +148,7 @@
             }
           },
           "ScheduleNewClass": {
-            "version": "2.3",
+            "version": "2.4",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -178,7 +178,7 @@
             }
           },
           "blobiniotedgedevice": {
-            "version": "1.0",
+            "version": "1.6",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -187,7 +187,7 @@
               "createOptions": {
                 "Env":[
                   "LOCAL_STORAGE_ACCOUNT_NAME=localblobstorage",
-                  "LOCAL_STORAGE_ACCOUNT_KEY=OfuGV4ZjVGDc0UYVKgc0bg=="
+                  "LOCAL_STORAGE_ACCOUNT_KEY=aHiEfi3v6rzQizcsWQzUYbv5Vwb4vUfFq01JajUp4sI/ddSZ5fHCQqb6iNdkkjW45JVG6Wdr39K6RMYzmw6L2g=="
                  ],
                  "HostConfig":{
                    "Binds": ["edgeblobvolume:/blobroot"],
@@ -228,7 +228,7 @@
           "uploadOrder": "OldestFirst",
           "cloudStorageConnectionString": "$CONTAINER_REGISTRY_STORAGE_iaestorageconnectionstring",
           "storageContainersForUpload": {
-            "image-frame-onedge": {
+            "image-frame": {
               "target": "$CONTAINER_REGISTRY_BLOB_iaeblobstorageidentifier"
             }
           },
