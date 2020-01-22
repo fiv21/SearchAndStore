@@ -1,5 +1,7 @@
 import time, os, io, math, sys, asyncio, threading, random, cv2, argparse
 import sched, logging, imutils, itertools, json, uuid, smtplib, ssl
+import queue
+import thread
 from six.moves import input
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -18,7 +20,11 @@ from pandas.io.json import json_normalize
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+
 logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.ERROR)
+
+q = queue.Queue()
+
 
 ###############################################################################
 rtspUser1 = os.getenv('rtspUser1', '')
@@ -80,6 +86,14 @@ MatterID = "999"
 LessonID = "999"
 InstitutionID = "Practia Global"
 ################################
+
+
+def worker(a):
+    while True:
+        f, args = q.get()
+        f(*args)
+
+
 
 def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
     message = MIMEMultipart("alternative")
@@ -241,9 +255,11 @@ def storePicture(rtspCapture):
     blobUploadedName = ts + ".jpg"
     with open(file_path_abs, "rb") as data:
         try:
-            container_client.upload_blob(blobUploadedName, 
-                                            data, content_settings=ContentSettings(content_type='image/jpg'),
-                                            metadata=fileMetadata)
+            q.put((container_client.upload_blob,
+            [blobUploadedName, 
+            data, 
+            content_settings=ContentSettings(content_type='image/jpg'),
+            metadata=fileMetadata]))
             logging.debug('Image Stored in Blob Storage')
         except:
             logging.error('STORING picture!')
@@ -287,6 +303,7 @@ def beginRecord():
     return 1
 
 async def main():
+    thread.start_new_thread(worker, tuple())
     try:
         if not sys.version >= "3.5.3":
             raise Exception( "The sample requires python 3.5.3+. Current version of Python: %s" % sys.version )
