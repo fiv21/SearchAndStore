@@ -1,7 +1,7 @@
-import time, os, io, math, sys, asyncio, threading, random, cv2, argparse
+import time, os, io, math, sys, asyncio, random, cv2, argparse
 import sched, logging, imutils, itertools, json, uuid, smtplib, ssl
 import queue
-import thread
+import threading
 from six.moves import input
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -22,9 +22,6 @@ from email.mime.multipart import MIMEMultipart
 
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.ERROR)
-
-q = queue.Queue()
-
 
 ###############################################################################
 rtspUser1 = os.getenv('rtspUser1', '')
@@ -63,6 +60,7 @@ SMTPhostAddress = os.getenv('SMTPhostAddress', '')
 sender_email = os.getenv('sender_email', '')
 password = os.getenv('senderEmailPassword', '') 
 
+num_threads = int(os.getenv('coresToUse', ''))
 ##############################################################################
 
 # FACE DETECTOR PARAMETERS #
@@ -74,7 +72,7 @@ scaleFactorParam = 1.3
 today = date.today().strftime("%d/%m/%Y")
 now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), "%d/%m/%Y %H:%M")
 refreshSchedule = datetime.now()
-delay = 4
+delay = 0.5
 #####################
 
 # GLOBAL DISGUSTING PARAMETERS #
@@ -87,13 +85,18 @@ LessonID = "999"
 InstitutionID = "Practia Global"
 ################################
 
+q = queue.Queue()
 
 def worker(a):
     while True:
         f, args = q.get()
         f(*args)
+        q.task_done()
 
-
+for i in range(num_threads):
+    w = threading.Thread(target=worker, args=(q,))
+    w.setDaemon(True)
+    w.start()
 
 def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
     message = MIMEMultipart("alternative")
@@ -169,7 +172,7 @@ def checkSchedule(status):
                     LessonID = "999"
                     InstitutionID = "Practia Global"
                     pass
-                delay = (1.0/float(df.fpsRate[y]))
+                delay = float(1.0/float(df.fpsRate[y]))
                 if (inicioClase <= now and now <= finClase and status == False):
                     nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
                     nombreProfesor = str(df["profesor.nombre"][y])
@@ -224,8 +227,8 @@ def faceCutter(proc, gray, countFace):
                         auxAbsDist = relativeDistance
         matrix[auxK][auxL] = 'busy'
         new_im.paste(croppedFace, candidate)
-    new_im.show()
-    storePicture(np.array(new_im))
+    #new_im.show()
+    q.put( (storePicture, [np.array(new_im)]) )
     return 1
 
 def detectFace(rawRTSPCapture):    
@@ -255,11 +258,7 @@ def storePicture(rtspCapture):
     blobUploadedName = ts + ".jpg"
     with open(file_path_abs, "rb") as data:
         try:
-            q.put((container_client.upload_blob,
-            [blobUploadedName, 
-            data, 
-            content_settings=ContentSettings(content_type='image/jpg'),
-            metadata=fileMetadata]))
+            container_client.upload_blob(blobUploadedName, data, content_settings=ContentSettings(content_type='image/jpg'), metadata=fileMetadata)
             logging.debug('Image Stored in Blob Storage')
         except:
             logging.error('STORING picture!')
@@ -272,11 +271,8 @@ def beginRecord():
     try:
         camera1 = cv2.VideoCapture(RTSP_cam1)
         camera2 = cv2.VideoCapture(RTSP_cam2)
-    except:
-        logging.critical('Exception error: opening stream over RTSP!')
-        logging.debug('Restarting in 10 seconds...')
-        time.sleep(10)
-        return 0
+    except AttributeError:
+        pass
     ret1, frame1 = camera1.read()
     ret2, frame2 = camera2.read()
     if ret1 and ret2:
@@ -303,7 +299,6 @@ def beginRecord():
     return 1
 
 async def main():
-    thread.start_new_thread(worker, tuple())
     try:
         if not sys.version >= "3.5.3":
             raise Exception( "The sample requires python 3.5.3+. Current version of Python: %s" % sys.version )
@@ -342,8 +337,9 @@ async def main():
                     status, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
                     state = status
                 while ((timeoutFlag==False) and (status == True)):
+                    logging.error("Check time difference between this...")
                     grabando = beginRecord()
-                    while(grabando == 0):
+                    if (grabando == 0):
                         counterTimeout+=1
                         time.sleep(1)
                         if counterTimeout >= (timeoutInMinutes*60):
@@ -351,13 +347,15 @@ async def main():
                             timeoutFlag = True
                             break  
                         logging.debug('No face founded in the picture, retrying...')
+                        delay(1.0)
                     if(horarioFinClase<datetime.now()):
                             logging.info('Class has ended.')
                             notifyProfessor(lastNombreProfesor, lastMailProfesor, lastNombreCurso, False)
                             state = False
                             status = state   
                             break   
-                    time.sleep(delay)  #wait delay time to take another picture            
+                    time.sleep(delay)  #wait delay time to take another picture  
+                    logging.error("And this error...")          
                 if (horarioFinClase<datetime.now()):
                     if timeoutFlag:
                         logging.info('Timeout done, restarting process and requesting the actual schedule in 1 minute')
