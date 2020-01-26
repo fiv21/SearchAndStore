@@ -58,13 +58,16 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "18.8",
+            "version": "25.0",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "env": {
-              "coresToUse": { 
-                "value": 6
+              "cameraFPS": {
+                "value": "$CONTAINER_REGISTRY_FPSmax_iaecameras"
+              },
+              "threadsToUse": { 
+                "value": "$CONTAINER_REGISTRY_THREADS_iaeicpu"
               },
               "rtspUser1": {
                 "value": "admin"
@@ -151,7 +154,7 @@
             }
           },
           "ScheduleNewClass": {
-            "version": "2.4",
+            "version": "2.5",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -181,7 +184,7 @@
             }
           },
           "blobiniotedgedevice": {
-            "version": "1.6",
+            "version": "1.8",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",

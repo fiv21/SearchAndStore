@@ -1,17 +1,12 @@
 import time, os, io, math, sys, asyncio, random, cv2, argparse
 import sched, logging, imutils, itertools, json, uuid, smtplib, ssl
-import queue
-import threading
-from six.moves import input
+import queue, threading
+from vidgear.gears import CamGear
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta
-from scipy.linalg import norm
-from scipy import sum, average
 from azure.iot.device.aio import IoTHubModuleClient
 from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings, ContainerClient, PublicAccess
-from keras.models import load_model
-from keras.preprocessing.image import img_to_array
 import azure.cosmos.cosmos_client as cosmos_client
 import azure.cosmos.errors as errors
 import azure.cosmos.http_constants as http_constants
@@ -19,7 +14,6 @@ import pandas as pd
 from pandas.io.json import json_normalize
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.ERROR)
 
@@ -38,6 +32,8 @@ PathCam2 = os.getenv('PathCam2', '')
 
 RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+PortCam1+PathCam1)
 RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+PortCam2+PathCam2)
+#DEBUG_CAM = str('rtsp://practia:global@192.168.1.110:5554/video/h264')
+DEBUG_CAM = str('rtsp://practia:global@192.168.88.13:5554/video/h264')
 
 connection_string=os.getenv('local_connection_string', '')
 container=os.getenv('local_container', '')
@@ -60,7 +56,8 @@ SMTPhostAddress = os.getenv('SMTPhostAddress', '')
 sender_email = os.getenv('sender_email', '')
 password = os.getenv('senderEmailPassword', '') 
 
-num_threads = int(os.getenv('coresToUse', ''))
+num_threads = int(os.getenv('threadsToUse', '')) - 1 #We force to leave 1 thread to the Man In Charge
+cameraFPS = float(os.getenv('cameraFPS', ''))
 ##############################################################################
 
 # FACE DETECTOR PARAMETERS #
@@ -72,7 +69,10 @@ scaleFactorParam = 1.3
 today = date.today().strftime("%d/%m/%Y")
 now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), "%d/%m/%Y %H:%M")
 refreshSchedule = datetime.now()
-delay = 0.5
+FPS = 0.5
+timeoutFlag = False
+stopWatch = datetime.now()
+fpsCounter = 0
 #####################
 
 # GLOBAL DISGUSTING PARAMETERS #
@@ -85,18 +85,52 @@ LessonID = "999"
 InstitutionID = "Practia Global"
 ################################
 
+###################################
+### PROCESS QUEUES DEFINITIONS ####
+###################################
 q = queue.Queue()
 
-def worker(a):
+###################################
+
+#####################
+### RTSP Objects ####
+#####################
+
+optionsHD = {"CAP_PROP_FRAME_WIDTH ":1920, "CAP_PROP_FRAME_HEIGHT":1080, "CAP_PROP_FPS ":cameraFPS}
+options4k = {"CAP_PROP_FRAME_WIDTH ":3840, "CAP_PROP_FRAME_HEIGHT":2160, "CAP_PROP_FPS ":cameraFPS}
+
+try:
+    testingCamera = CamGear(source=DEBUG_CAM, logging = True, **optionsHD).start()
+except RuntimeError:
+    logging.error('DEBUG CAMERA OFFLINE')
+    pass
+try:
+    camera1 = CamGear(source=RTSP_cam1, logging = True, **options4k).start()
+except RuntimeError:
+    logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam1))
+    pass
+try:
+    camera2 = CamGear(source=RTSP_cam2, logging = True, **options4k).start()
+    logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam2))
+except RuntimeError:
+    pass 
+
+
+def worker(a): #The guys who will work while the man in charge supervise the operation
     while True:
         f, args = q.get()
         f(*args)
         q.task_done()
 
-for i in range(num_threads):
+threads = []
+
+for i in range(3): #We create the workers who will do the hard work ASAP
     w = threading.Thread(target=worker, args=(q,))
     w.setDaemon(True)
     w.start()
+    threads.append(w)
+
+
 
 def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
     message = MIMEMultipart("alternative")
@@ -128,10 +162,7 @@ def notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, inicio):
     mailserver.sendmail(sender_email, mailProfesor, message.as_string())
     mailserver.quit()
 
-
-
 def checkSchedule(status):
-    state = False
     global lastNombreProfesor
     global lastMailProfesor
     global lastNombreCurso
@@ -143,6 +174,11 @@ def checkSchedule(status):
     today = date.today().strftime("%d/%m/%Y")
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
     getLastUpdate = "SELECT * FROM "+ str(containerIDCosmosDB) + " s WHERE s.edgeDeviceUID = '"+ str(DEVICEID) +"' ORDER BY s._ts DESC"
+    state = False
+    inicioClase = now - timedelta(minutes=10)
+    finClase = now - timedelta(minutes=10)
+    timeoutInMinutes = 1
+    FPS = 1
     FEEDOPTIONS = {}
     FEEDOPTIONS["enableCrossPartitionQuery"] = True
     QUERY = {
@@ -151,49 +187,46 @@ def checkSchedule(status):
     client = cosmos_client.CosmosClient(str(scheduleUrl), {'masterKey': str(scheduleKey)})
     connectionStringCosmosDB = "dbs/" + str(databaseIDCosmosDB) + "/colls/" + str(containerIDCosmosDB)
     results = list(client.QueryItems(connectionStringCosmosDB, QUERY, FEEDOPTIONS))
-    df = json_normalize(results)
-    for y in range(len(df['profesor.itinerario'])):
-        for x in range(len(df["profesor.itinerario"][y])):
-            if (df["profesor.itinerario"][y][x]['diaMesAnio'] == today):
-                inicioClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
-                                                    df["profesor.itinerario"][y][x]['horarioInicio']), '%d/%m/%Y %H:%M')
-                finClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
-                                                    df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
-                timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
-                try:
-                    ProgramID = df['profesor.itinerario'][y][x]['programaID']
-                    MatterID = df['profesor.itinerario'][y][x]['cursoID']
-                    LessonID = df['profesor.itinerario'][y][x]['claseID']
-                    InstitutionID = df['institucion'][y]
-                except:
-                    logging.error("Failure getting metadata!")
-                    ProgramID = "999"
-                    MatterID = "999"
-                    LessonID = "999"
-                    InstitutionID = "Practia Global"
-                    pass
-                delay = float(1.0/float(df.fpsRate[y]))
-                if (inicioClase <= now and now <= finClase and status == False):
-                    nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
-                    nombreProfesor = str(df["profesor.nombre"][y])
-                    mailProfesor = str(df['profesor.email'][y])
-                    logging.debug('Sending notification via e-mail')
-                    notifyProfessor(nombreProfesor, mailProfesor, nombreCurso, True)
-                    lastNombreProfesor = nombreProfesor
-                    lastMailProfesor = mailProfesor
-                    lastNombreCurso = nombreCurso
-                    state = True
-                    logging.info('Class started!')
-            else:
-                state = False
-                inicioClase = now
-                finClase = now
-                timeoutInMinutes = 1
-                delay = 4
-            return (state, inicioClase, finClase, timeoutInMinutes, delay)
+    if len(results) > 0:
+        df = json_normalize(results)
+        for y in range(len(df['profesor.itinerario'])):
+            for x in range(len(df["profesor.itinerario"][y])):
+                if (df["profesor.itinerario"][y][x]['diaMesAnio'] == today):
+                    auxinicioClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
+                                                        df["profesor.itinerario"][y][x]['horarioInicio']), '%d/%m/%Y %H:%M')
+                    auxfinClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
+                                                        df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
+                    timeoutInMinutes = int(df["profesor.itinerario"][y][x]['timeoutInMinutes'])
+                    try:
+                        ProgramID = df['profesor.itinerario'][y][x]['programaID']
+                        MatterID = df['profesor.itinerario'][y][x]['cursoID']
+                        LessonID = df['profesor.itinerario'][y][x]['claseID']
+                        InstitutionID = df['institucion'][y]
+                    except:
+                        logging.error("Failure getting metadata!")
+                        ProgramID = "000"
+                        MatterID = "000"
+                        LessonID = "000"
+                        InstitutionID = "Metadata ERROR!"
+                        pass
+                    FPS = float(cameraFPS/float(df.fpsRate[y]))
+                    if (auxinicioClase <= now and now < auxfinClase and status == False):
+                        nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
+                        nombreProfesor = str(df["profesor.nombre"][y])
+                        mailProfesor = str(df['profesor.email'][y])
+                        logging.debug('Sending notification via e-mail')
+                        lastNombreProfesor = nombreProfesor
+                        lastMailProfesor = mailProfesor
+                        lastNombreCurso = nombreCurso
+                        state = True
+                        q.put( (notifyProfessor, [nombreProfesor, mailProfesor, nombreCurso, state]) )
+                        logging.info('Class started!')
+                        inicioClase = auxinicioClase
+                        finClase = auxfinClase
+                        return (state, finClase, timeoutInMinutes, FPS)
+    return (state, finClase, timeoutInMinutes, FPS)
 
-
-def faceCutter(proc, gray, countFace):
+def faceCutter(proc, gray, countFace, captureTime):
     gridX = 7
     gridY= 4
     zero = "0"  
@@ -207,8 +240,7 @@ def faceCutter(proc, gray, countFace):
     new_im_w = gridX*img_w+m_x*gridX
     new_im_h = gridY*img_h+m_y*gridY
     new_im = Image.new('RGB', (new_im_w, new_im_h))
-    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam,
-                                            minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam, minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
     for (x, y, w, h) in faces:
         croppedFace = proc[y:y+h, x:x+w]
         croppedFace = cv2.resize(croppedFace, (img_w, img_h), interpolation = cv2.INTER_AREA)
@@ -227,78 +259,121 @@ def faceCutter(proc, gray, countFace):
                         auxAbsDist = relativeDistance
         matrix[auxK][auxL] = 'busy'
         new_im.paste(croppedFace, candidate)
-    #new_im.show()
-    q.put( (storePicture, [np.array(new_im)]) )
-    return 1
+    q.put( (storePicture, [np.array(new_im), captureTime]) )
 
-def detectFace(rawRTSPCapture):    
+def detectFace(rawRTSPCapture, timeToStamp, setTimeOutInMinutes):  
+    global stopWatch  
+    global timeoutFlag
     gray = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2GRAY)
     rawRTSPCapture = cv2.cvtColor(rawRTSPCapture, cv2.COLOR_BGR2RGB)
-    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam,
-                                            minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam, minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
     if len(faces) > 0:
-        logging.debug('At least 1 face detected')
-        faceCutter(rawRTSPCapture, gray, len(faces))
-        return 1
+        logging.debug('{} Face(s) detected!'.format(len(faces)))
+        q.put( (faceCutter, [rawRTSPCapture, gray, len(faces), timeToStamp]) )
+        stopWatch = datetime.now()
     else:
-        return 0
+        auxVar = stopWatch + timedelta(minutes=setTimeOutInMinutes)
+        auxVar = int(datetime.timestamp(auxVar))
+        if (timeToStamp > auxVar):
+            timeoutFlag = True
+            logging.warning('CLASS TIMEDOUT!')
 
-def storePicture(rtspCapture):
+def storePicture(rtspCapture, ts):
     global ProgramID
     global MatterID
     global LessonID
     fileMetadata = {"InstitutionID":InstitutionID, "ProgramID":ProgramID, "MatterID":MatterID, "LessonID":LessonID}
     blob_service_client = BlobServiceClient.from_connection_string(connection_string)
     container_client = blob_service_client.get_container_client(container)
-    now = datetime.now()
-    ts = str(int(datetime.timestamp(now)))
+    blobUploadedName = str(ts) + ".jpg"   
     fileName = "image.jpg"
     cv2.imwrite(fileName, rtspCapture)
     file_path_abs = "./" + fileName
-    blobUploadedName = ts + ".jpg"
     with open(file_path_abs, "rb") as data:
         try:
             container_client.upload_blob(blobUploadedName, data, content_settings=ContentSettings(content_type='image/jpg'), metadata=fileMetadata)
             logging.debug('Image Stored in Blob Storage')
         except:
-            logging.error('STORING picture!')
-            time.sleep(1)
-            return 0
-    return 1
+            logging.error("Can't store the picture!")
 
+def beginRecord(timeOutParameter, FPS):
+    global fpsCounter
+    if (fpsCounter % FPS == 0):
+        try:
+            frame1 = camera1.read()
+        except NameError:
+            frame1 = None
+            pass
+        try:
+            frame2 = camera2.read()
+        except NameError:
+            frame2 = None
+            pass
+        try:
+            debugFrame = testingCamera.read()
+        except NameError:
+            debugFrame = None
+            pass
+        exactTime = int(datetime.timestamp(now))
+        if (frame1 != None) and (frame2 != None):
+            logging.debug('Taking picture with 2 cameras...')
+            #frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
+            passingPicture = np.concatenate((frame1, frame2), axis = 1)
+        else:
+            if (frame1 is not None):
+                logging.debug('Taking picture with camera: %s', RTSP_cam1)
+                passingPicture = frame1
+            if (frame2 is not None):
+                logging.debug('Taking picture with camera: %s', RTSP_cam2)
+                passingPicture = frame2
+            if (debugFrame is not None):
+                logging.debug('Taking picture with camera: %s', DEBUG_CAM)
+                passingPicture = debugFrame
+            else:
+                passingPicture = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
+                logging.debug("NO CAMERAS ONLINE, PUTTING DARK PICTURE!")
+        q.put( (detectFace, [passingPicture, exactTime, timeOutParameter]) )
+    fpsCounter += 1
 
-def beginRecord():
-    try:
-        camera1 = cv2.VideoCapture(RTSP_cam1)
-        camera2 = cv2.VideoCapture(RTSP_cam2)
-    except AttributeError:
-        pass
-    ret1, frame1 = camera1.read()
-    ret2, frame2 = camera2.read()
-    if ret1 and ret2:
-        logging.debug('Taking picture with 2 cameras...')
-        #frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
-        bigPicture = np.concatenate((frame1, frame2), axis = 1)
-        detectTimeout = detectFace(bigPicture)
-    else:
-        if ret1:
-            logging.debug('Taking picture with camera: %s', RTSP_cam1)
-            detectTimeout = detectFace(frame1)
-        if ret2:
-            logging.debug('Taking picture with camera: %s', RTSP_cam2)
-            detectTimeout = detectFace(frame2)
-    if detectTimeout == 0:
-        return 0
-    try:
-        camera1.release()
-        camera2.release()
-    except:
-        logging.error("Can't release the stream channel")
-        time.sleep(1)
-        return 0
-    return 1
+def manInCharge():
+    state = False
+    global lastNombreProfesor
+    global lastMailProfesor
+    global lastNombreCurso
+    global timeoutFlag
+    global fpsCounter
+    while True:
+        if (state == False):
+            recording, horarioFinClase, timeoutInMinutes, FPS = checkSchedule(state)
+            state = recording #it's True when the class start
+        while ((timeoutFlag==False) and (recording == True)):
+            if(horarioFinClase<datetime.now()):
+                logging.info('Class has ended!')
+                state = False #Class ended
+                q.put( (notifyProfessor, [lastNombreProfesor, lastMailProfesor, lastNombreCurso, state]) )
+                recording = state 
+                fpsCounter = 0  
+                break
+            if(timeoutFlag):
+                logging.warning('Class timeout! No face founded in picture')
+                break       
+            beginRecord(timeoutInMinutes, FPS)
+            time.sleep(1/cameraFPS)
+        if (horarioFinClase<datetime.now()):
+            if timeoutFlag:
+                logging.info('Timeout done, restarting process and requesting the actual schedule in 1 minute')
+                timeoutFlag = False
+            state = False
+            recording = state
+            fpsCounter = 0
+        time.sleep(10)
+
+t_manInCharge = threading.Thread(target=manInCharge)
+t_manInCharge.daemon = True
+t_manInCharge.start() #Start the daemon of the main task
 
 async def main():
+
     try:
         if not sys.version >= "3.5.3":
             raise Exception( "The sample requires python 3.5.3+. Current version of Python: %s" % sys.version )
@@ -325,51 +400,7 @@ async def main():
 
         ###everything goes HERE
         def stdin_listener():
-            timeoutFlag = False
-            state = False
-            counterTimeout = 0
-            global lastNombreProfesor
-            global lastMailProfesor
-            global lastNombreCurso
-            logging.info('System starting...')
-            while True:
-                if (state == False):
-                    status, horarioInicioClase, horarioFinClase, timeoutInMinutes, delay = checkSchedule(state)
-                    state = status
-                while ((timeoutFlag==False) and (status == True)):
-                    logging.error("Check time difference between this...")
-                    grabando = beginRecord()
-                    if (grabando == 0):
-                        counterTimeout+=1
-                        time.sleep(1)
-                        if counterTimeout >= (timeoutInMinutes*60):
-                            logging.error('NO FACES DETECTED, MODULE TIMEDOUT! WAIT UNTIL NEXT CLASS')
-                            timeoutFlag = True
-                            break  
-                        logging.debug('No face founded in the picture, retrying...')
-                        delay(1.0)
-                    if(horarioFinClase<datetime.now()):
-                            logging.info('Class has ended.')
-                            notifyProfessor(lastNombreProfesor, lastMailProfesor, lastNombreCurso, False)
-                            state = False
-                            status = state   
-                            break   
-                    time.sleep(delay)  #wait delay time to take another picture  
-                    logging.error("And this error...")          
-                if (horarioFinClase<datetime.now()):
-                    if timeoutFlag:
-                        logging.info('Timeout done, restarting process and requesting the actual schedule in 1 minute')
-                    timeoutFlag = False
-                    counterTimeout = 0
-                    state = False
-                    status = state
-                time.sleep(60)
-
-
-
-
-###and don't change much more... I'm watching you -.-"
-
+            logging.info('System started...')
         # Schedule task for C2D Listener
         listeners = asyncio.gather(input1_listener(module_client))
 
@@ -396,6 +427,7 @@ if __name__ == "__main__":
     #loop = asyncio.get_event_loop()
     #loop.run_until_complete(main())
     #loop.close()
-
     # If using Python 3.7 or above, you can use following code instead:
-     asyncio.run(main())
+    for w in threads:
+        w.join() #Wait until everybody finish their work, then close it.
+    asyncio.run(main())

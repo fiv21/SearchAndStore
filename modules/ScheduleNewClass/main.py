@@ -85,7 +85,7 @@ def updateCosmosDB(scheduleJSON):
 
 def fromMultiDicToJSON(data):
    course = getJSONexample()
-   course['edgeDeviceUID'] = 'IoTMakerSpaceTestDevice'
+   course['edgeDeviceUID'] = DEVICEID
    nombreProfesor = data.get('name')
    course['profesor']['nombre'] = nombreProfesor
    emailProfesor = data.get('email')
