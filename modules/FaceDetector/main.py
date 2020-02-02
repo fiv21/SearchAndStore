@@ -10,14 +10,18 @@ from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings, C
 import azure.cosmos.cosmos_client as cosmos_client
 import azure.cosmos.errors as errors
 import azure.cosmos.http_constants as http_constants
-import pandas as pd
 from pandas.io.json import json_normalize
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.ERROR)
 
-###############################################################################
+##############################
+####### LAB VARIABLES ########
+##############################
+
+DEBUG_MODE = bool(os.getenv('debugMode', '')) #DEBUG_MODE: True (Laboratory / Debugging Mode ON) / False (Production Mode ON)
+LOCAL_LAB = bool(os.getenv('localTestingLab', ''))  #LOCAL_LAB: True (Practia Office Lab) / False (Home Office Lab)
+                                                    # CHANGE THE IP IN THE LOCAL_LAB SECTION TO MAKE THIS WORK
 rtspUser1 = os.getenv('rtspUser1', '')
 rtspPass1 = os.getenv('rtspPass1', '')
 IPCam1 = os.getenv('IPCam1', '')
@@ -32,8 +36,7 @@ PathCam2 = os.getenv('PathCam2', '')
 
 RTSP_cam1 = str('rtsp://'+rtspUser1+':'+rtspPass1+'@'+IPCam1+':'+PortCam1+PathCam1)
 RTSP_cam2 = str('rtsp://'+rtspUser2+':'+rtspPass2+'@'+IPCam2+':'+PortCam2+PathCam2)
-#DEBUG_CAM = str('rtsp://practia:global@192.168.1.110:5554/video/h264')
-DEBUG_CAM = str('rtsp://practia:global@192.168.88.13:5554/video/h264')
+
 
 connection_string=os.getenv('local_connection_string', '')
 container=os.getenv('local_container', '')
@@ -59,12 +62,10 @@ password = os.getenv('senderEmailPassword', '')
 num_threads = int(os.getenv('threadsToUse', '')) - 1 #We force to leave 1 thread to the Man In Charge
 cameraFPS = float(os.getenv('cameraFPS', ''))
 ##############################################################################
-
 # FACE DETECTOR PARAMETERS #
-minNeighborsParam = 5
-scaleFactorParam = 1.3
+minNeighborsParam = 3
+scaleFactorParam = 1.1
 ############################
-
 # GET DATETIME DATA #
 today = date.today().strftime("%d/%m/%Y")
 now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), "%d/%m/%Y %H:%M")
@@ -74,7 +75,6 @@ timeoutFlag = False
 stopWatch = datetime.now()
 fpsCounter = 0
 #####################
-
 # GLOBAL DISGUSTING PARAMETERS #
 lastNombreProfesor = "NAME"
 lastMailProfesor = "NAME@DOMAIN.DOT"
@@ -83,37 +83,48 @@ ProgramID = "999"
 MatterID = "999"
 LessonID = "999"
 InstitutionID = "Practia Global"
-################################
-
 ###################################
 ### PROCESS QUEUES DEFINITIONS ####
 ###################################
 q = queue.Queue()
-
-###################################
-
 #####################
 ### RTSP Objects ####
 #####################
-
-optionsHD = {"CAP_PROP_FRAME_WIDTH ":1920, "CAP_PROP_FRAME_HEIGHT":1080, "CAP_PROP_FPS ":cameraFPS}
 options4k = {"CAP_PROP_FRAME_WIDTH ":3840, "CAP_PROP_FRAME_HEIGHT":2160, "CAP_PROP_FPS ":cameraFPS}
+optionsHD = {"CAP_PROP_FRAME_WIDTH ":1920, "CAP_PROP_FRAME_HEIGHT":1080, "CAP_PROP_FPS ":cameraFPS}
+######################################################################################################
+if LOCAL_LAB:
+    DEBUG_CAM = str('rtsp://practia:global@192.168.1.110:5554/video/h264')
+else:
+    DEBUG_CAM = str('rtsp://practia:global@192.168.88.13:5554/video/h264')
 
-try:
-    testingCamera = CamGear(source=DEBUG_CAM, logging = True, **optionsHD).start()
-except RuntimeError:
-    logging.error('DEBUG CAMERA OFFLINE')
-    pass
-try:
-    camera1 = CamGear(source=RTSP_cam1, logging = True, **options4k).start()
-except RuntimeError:
-    logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam1))
-    pass
-try:
-    camera2 = CamGear(source=RTSP_cam2, logging = True, **options4k).start()
-    logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam2))
-except RuntimeError:
-    pass 
+if DEBUG_MODE:
+    logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.DEBUG)
+else:
+    logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO)
+######################################################################################################
+
+
+if DEBUG_MODE:
+    logging.debug('CREATING LABORATORY CAMERA STREAMING...')
+    try:
+        testingCamera = CamGear(source=DEBUG_CAM, logging = True, **optionsHD).start()
+    except RuntimeError:
+        logging.error('DEBUG CAMERA OFFLINE')
+        pass
+else:
+    logging.warning('Establishing connection with RTSP cameras...')
+    try:
+        camera1 = CamGear(source=RTSP_cam1, logging = True, **options4k).start()
+    except RuntimeError:
+        logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam1))
+        pass
+    try:
+        camera2 = CamGear(source=RTSP_cam2, logging = True, **options4k).start()
+    except RuntimeError:
+        logging.error('RTSP CAMERA {} OFFLINE'.format(RTSP_cam2))
+        pass
+
 
 
 def worker(a): #The guys who will work while the man in charge supervise the operation
@@ -175,7 +186,6 @@ def checkSchedule(status):
     now = datetime.strptime(str(today + " " + datetime.now().strftime("%H:%M")), '%d/%m/%Y %H:%M')
     getLastUpdate = "SELECT * FROM "+ str(containerIDCosmosDB) + " s WHERE s.edgeDeviceUID = '"+ str(DEVICEID) +"' ORDER BY s._ts DESC"
     state = False
-    inicioClase = now - timedelta(minutes=10)
     finClase = now - timedelta(minutes=10)
     timeoutInMinutes = 1
     FPS = 1
@@ -192,7 +202,7 @@ def checkSchedule(status):
         for y in range(len(df['profesor.itinerario'])):
             for x in range(len(df["profesor.itinerario"][y])):
                 if (df["profesor.itinerario"][y][x]['diaMesAnio'] == today):
-                    auxinicioClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
+                    inicioClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
                                                         df["profesor.itinerario"][y][x]['horarioInicio']), '%d/%m/%Y %H:%M')
                     auxfinClase = datetime.strptime(str(df["profesor.itinerario"][y][x]['diaMesAnio'] + " " +
                                                         df["profesor.itinerario"][y][x]['horarioFin']), '%d/%m/%Y %H:%M')
@@ -210,7 +220,7 @@ def checkSchedule(status):
                         InstitutionID = "Metadata ERROR!"
                         pass
                     FPS = float(cameraFPS/float(df.fpsRate[y]))
-                    if (auxinicioClase <= now and now < auxfinClase and status == False):
+                    if (inicioClase <= now and now < auxfinClase and status == False):
                         nombreCurso = str(df["profesor.itinerario"][y][x]['nombreCurso'])
                         nombreProfesor = str(df["profesor.nombre"][y])
                         mailProfesor = str(df['profesor.email'][y])
@@ -221,7 +231,6 @@ def checkSchedule(status):
                         state = True
                         q.put( (notifyProfessor, [nombreProfesor, mailProfesor, nombreCurso, state]) )
                         logging.info('Class started!')
-                        inicioClase = auxinicioClase
                         finClase = auxfinClase
                         return (state, finClase, timeoutInMinutes, FPS)
     return (state, finClase, timeoutInMinutes, FPS)
@@ -259,6 +268,7 @@ def faceCutter(proc, gray, countFace, captureTime):
                         auxAbsDist = relativeDistance
         matrix[auxK][auxL] = 'busy'
         new_im.paste(croppedFace, candidate)
+    logging.debug('Putting frame in queue to persist it...')
     q.put( (storePicture, [np.array(new_im), captureTime]) )
 
 def detectFace(rawRTSPCapture, timeToStamp, setTimeOutInMinutes):  
@@ -272,8 +282,9 @@ def detectFace(rawRTSPCapture, timeToStamp, setTimeOutInMinutes):
         q.put( (faceCutter, [rawRTSPCapture, gray, len(faces), timeToStamp]) )
         stopWatch = datetime.now()
     else:
+        logging.debug('No Face(s) detected in frame')
         auxVar = stopWatch + timedelta(minutes=setTimeOutInMinutes)
-        auxVar = int(datetime.timestamp(auxVar))
+        auxVar = int(float(datetime.timestamp(auxVar))*1000)
         if (timeToStamp > auxVar):
             timeoutFlag = True
             logging.warning('CLASS TIMEDOUT!')
@@ -314,7 +325,8 @@ def beginRecord(timeOutParameter, FPS):
         except NameError:
             debugFrame = None
             pass
-        exactTime = int(datetime.timestamp(now))
+        now = datetime.now()
+        exactTime = int(float(datetime.timestamp(now))*1000)
         if (frame1 != None) and (frame2 != None):
             logging.debug('Taking picture with 2 cameras...')
             #frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
@@ -332,6 +344,7 @@ def beginRecord(timeOutParameter, FPS):
             else:
                 passingPicture = np.zeros(shape=[512, 512, 3], dtype=np.uint8)
                 logging.debug("NO CAMERAS ONLINE, PUTTING DARK PICTURE!")
+        logging.debug("Sending frame to analyze if there's at least 1 face...")
         q.put( (detectFace, [passingPicture, exactTime, timeOutParameter]) )
     fpsCounter += 1
 
@@ -352,7 +365,7 @@ def manInCharge():
                 state = False #Class ended
                 q.put( (notifyProfessor, [lastNombreProfesor, lastMailProfesor, lastNombreCurso, state]) )
                 recording = state 
-                fpsCounter = 0  
+                fpsCounter = 0 
                 break
             if(timeoutFlag):
                 logging.warning('Class timeout! No face founded in picture')

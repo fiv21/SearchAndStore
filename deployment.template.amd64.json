@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "30.5",
+            "version": "30.1",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -145,22 +145,22 @@
               }
             },
             "settings": {
-              "image": "${MODULES.FaceDetector.arm32v7}",
+              "image": "${MODULES.FaceDetector}",
               "createOptions": {}
             }
           },
           "LogsModule": {
-            "version": "5.2",
+            "version": "5.1",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "${MODULES.LogsModule.arm32v7}",
+              "image": "${MODULES.LogsModule}",
               "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8080/tcp\":[{\"HostPort\":\"8080\"}]}}}"
             }
           },
           "ScheduleNewClass": {
-            "version": "5.5",
+            "version": "5.1",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -185,7 +185,7 @@
               }
             },
             "settings": {
-              "image": "${MODULES.ScheduleNewClass.arm32v7}",
+              "image": "${MODULES.ScheduleNewClass}",
               "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8086/tcp\":[{\"HostPort\":\"8086\"}]}}}"
             }
           },

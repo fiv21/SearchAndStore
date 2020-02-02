@@ -1,9 +1,69 @@
-FROM python:3.7-slim-buster
+FROM arm32v7/python:3.7-slim-buster
 
 WORKDIR /app
+RUN echo "BUILD MODULE: FACE DETECTOR IN ARM32"
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get upgrade -y
+
+
+RUN echo "BUILDING OPENCV"
+
+ENV OPENCV_VERSION="4.1.0.25"
+
+ENV LIB="libswscale-dev \
+         libtbb2 \
+         libtbb-dev \
+         libjpeg-dev \
+         libpng-dev \
+         libtiff-dev libtiff5 \
+         libpango-1.0-0 libgdk-pixbuf2.0-0 \
+         libavformat-dev libpangocairo-1.0-0\
+         libilmbase23 libatk1.0-0 libgtk-3-0 \
+         libqt4-test libqtcore4 libcairo2 libwebp6 libavutil56 \
+         libcairo-gobject2 libopenexr23 libqtgui4 libavformat58 \
+         libqtwebkit4 libqt4-test python3-pyqt5 \
+         libpq-dev \
+         libffi-dev \
+         libboost-all-dev \
+         libssl-dev \
+         libglib2.0-0 \
+         libavcodec-dev  \
+         libv4l-dev \
+         libxvidcore-dev \
+         libx264-dev \
+         libatlas-base-dev \
+         gfortran \
+         libhdf5-dev libhdf5-serial-dev \
+         libhdf5-103"
+
+ENV PKG="build-essential \
+         cmake \
+         git \
+         wget \
+         unzip \
+         yasm \
+         pkg-config"
+
+RUN apt-get update && \
+    apt-get install --no-install-recommends -qy $PKG && \
+    apt-get install --no-install-recommends -qy $LIB && \
+    apt-get install --no-install-recommends -qy gcc && \
+    apt-get install --no-install-recommends -qy python3-dev && \
+    
+    pip3 install cryptography 
+
+COPY requirementsarm32v7.txt ./
+
+RUN pip3 install --extra-index-url=https://www.piwheels.org/simple -r requirementsarm32v7.txt
+
+ENV TZ 'America/Argentina/Buenos_Aires'
+
+RUN echo $TZ > /etc/timezone && \
+    apt-get update && apt-get install -y tzdata && \
+    rm /etc/localtime && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata && \
+    apt-get clean
 
 COPY . .
 

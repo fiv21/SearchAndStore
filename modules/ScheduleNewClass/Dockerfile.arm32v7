@@ -2,8 +2,21 @@ FROM arm32v7/python:3.7-slim-buster
 
 WORKDIR /app
 
+RUN apt-get update
+RUN apt-get install -y gcc xsel xclip libxml2-dev \
+                        libxslt-dev python-lxml \
+                        python-h5py python-numexpr \
+                        python-dateutil python-six \
+                        python-tz python-bs4 python-html5lib \
+                        python-openpyxl python-tables python-xlrd \
+                        python-xlwt cython python-sqlalchemy \
+                        python-xlsxwriter python-jinja2 python-boto \
+                        python-gflags python-googleapi python-httplib2 \
+                        python-zmq libspatialindex-dev libatlas3-base libgfortran5 
+
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip3 install --extra-index-url=https://www.piwheels.org/simple -r requirements.txt
+RUN apt-get install -y python-pandas
 
 COPY . .
 

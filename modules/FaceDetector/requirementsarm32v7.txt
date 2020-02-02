@@ -1,13 +1,10 @@
 azure-iot-device~=2.0.0RC11
 azure-cosmos
 azure-storage-blob
-numpy
-opencv-python
 opencv-contrib-python
+numpy
+pandas
 imutils
 dlib 
 pillow
-pandas
-schedule
 vidgear
-simple-http-server
