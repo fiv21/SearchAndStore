@@ -1,60 +1,24 @@
-FROM arm32v7/python:3.7-slim-buster
+#USING PRECOMPILED IMAGE AS BASE
+#FROM arm32v7/python:3.7-slim-buster
+FROM vargasfrancoivan/armbaseiae:1.0
 
 WORKDIR /app
-RUN echo "BUILD MODULE: FACE DETECTOR IN ARM32"
 
 RUN apt-get update && apt-get upgrade -y
 
 
-RUN echo "BUILDING OPENCV"
+RUN apt-get install -y software-properties-common gnupg2 ca-certificates
 
-ENV OPENCV_VERSION="4.1.0.25"
+RUN echo 'deb [arch=armhf] http://ports.ubuntu.com/ trusty main universe' | tee -a /etc/apt/sources.list
+RUN echo 'deb-src [arch=armhf] http://ports.ubuntu.com/ trusty main universe'  | tee -a /etc/apt/sources.list
 
-ENV LIB="libswscale-dev \
-         libtbb2 \
-         libtbb-dev \
-         libjpeg-dev \
-         libpng-dev \
-         libtiff-dev libtiff5 \
-         libpango-1.0-0 libgdk-pixbuf2.0-0 \
-         libavformat-dev libpangocairo-1.0-0\
-         libilmbase23 libatk1.0-0 libgtk-3-0 \
-         libqt4-test libqtcore4 libcairo2 libwebp6 libavutil56 \
-         libcairo-gobject2 libopenexr23 libqtgui4 libavformat58 \
-         libqtwebkit4 libqt4-test python3-pyqt5 \
-         libpq-dev \
-         libffi-dev \
-         libboost-all-dev \
-         libssl-dev \
-         libglib2.0-0 \
-         libavcodec-dev  \
-         libv4l-dev \
-         libxvidcore-dev \
-         libx264-dev \
-         libatlas-base-dev \
-         gfortran \
-         libhdf5-dev libhdf5-serial-dev \
-         libhdf5-103"
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 40976EAF437D05B5
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 3B4FE6ACC0B21F32
 
-ENV PKG="build-essential \
-         cmake \
-         git \
-         wget \
-         unzip \
-         yasm \
-         pkg-config"
+RUN apt-get update
+RUN apt-get install -y libjasper1 libjasper-dev
+RUN apt-get install -y libilmbase-dev libopenexr-dev libgstreamer1.0-dev
 
-RUN apt-get update && \
-    apt-get install --no-install-recommends -qy $PKG && \
-    apt-get install --no-install-recommends -qy $LIB && \
-    apt-get install --no-install-recommends -qy gcc && \
-    apt-get install --no-install-recommends -qy python3-dev && \
-    
-    pip3 install cryptography 
-
-COPY requirementsarm32v7.txt ./
-
-RUN pip3 install --extra-index-url=https://www.piwheels.org/simple -r requirementsarm32v7.txt
 
 ENV TZ 'America/Argentina/Buenos_Aires'
 
@@ -67,4 +31,4 @@ RUN echo $TZ > /etc/timezone && \
 
 COPY . .
 
-CMD [ "python3", "-u", "./main.py" ]
+CMD [ "python", "-u", "./main.py" ]

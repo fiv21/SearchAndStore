@@ -1,4 +1,4 @@
-FROM arm32v7/python:3.7-slim-buster
+FROM vargasfrancoivan/armbaseiae:1.0
 
 WORKDIR /app
 
@@ -15,9 +15,10 @@ RUN apt-get install -y gcc xsel xclip libxml2-dev \
                         python-zmq libspatialindex-dev libatlas3-base libgfortran5 
 
 COPY requirements.txt ./
-RUN pip3 install --extra-index-url=https://www.piwheels.org/simple -r requirements.txt
-RUN apt-get install -y python-pandas
+RUN pip install -r requirements.txt
 
+EXPOSE 8086
 COPY . .
+RUN apt-get update && apt-get install -y iputils-ping
 
-CMD [ "python3", "-u", "./main.py" ]
+CMD [ "python", "-u", "./main.py" ]

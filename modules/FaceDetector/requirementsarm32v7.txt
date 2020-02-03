@@ -1,9 +1,7 @@
 azure-iot-device~=2.0.0RC11
 azure-cosmos
 azure-storage-blob
-opencv-contrib-python
-numpy
-pandas
+opencv-contrib-python==4.1.0.25
 imutils
 dlib 
 pillow

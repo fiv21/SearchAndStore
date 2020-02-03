@@ -37,7 +37,7 @@ DEVICEID = str(os.environ["IOTEDGE_DEVICEID"])
 value1CamaraIP = os.getenv('value1CamaraIP', '')
 value2CamaraIP = os.getenv('value2CamaraIP', '')
 
-ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1', '10.0.80.10']
+ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1', '10.0.80.10', '192.168.1.165', '192.168.88.30', '192.168.88.4']
 
 
 def valid_ip():
