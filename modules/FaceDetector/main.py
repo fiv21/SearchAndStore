@@ -10,18 +10,23 @@ from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings, C
 import azure.cosmos.cosmos_client as cosmos_client
 import azure.cosmos.errors as errors
 import azure.cosmos.http_constants as http_constants
+import azure.cosmos.retry_options as cosmosDB_retryOptions
 from pandas.io.json import json_normalize
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+##############################
+#### COSMOS DB PARAMETERS ####
+##############################
+#cosmosDB_retryOptions.RetryOptions(max_retry_attempt_count=100, fixed_retry_interval_in_milliseconds=1000, max_wait_time_in_seconds=60)
 
 ##############################
 ####### LAB VARIABLES ########
 ##############################
 
-DEBUG_MODE = bool(os.getenv('debugMode', '')) #DEBUG_MODE: True (Laboratory / Debugging Mode ON) / False (Production Mode ON)
-LOCAL_LAB = bool(os.getenv('localTestingLab', ''))  #LOCAL_LAB: True (Practia Office Lab) / False (Home Office Lab)
-                                                    # CHANGE THE IP IN THE LOCAL_LAB SECTION TO MAKE THIS WORK
+DEBUG_MODE =os.getenv('debugMode', '') #DEBUG_MODE: True (Laboratory / Debugging Mode ON) / False (Production Mode ON)
+PRACTIA_LAB = os.getenv('localTestingLab', '')  #PRACTIA_LAB: True (Practia Office Lab) / False (Home Office Lab)
+                                                    # CHANGE THE IP IN THE PRACTIA_LAB SECTION TO MAKE THIS WORK
 rtspUser1 = os.getenv('rtspUser1', '')
 rtspPass1 = os.getenv('rtspPass1', '')
 IPCam1 = os.getenv('IPCam1', '')
@@ -63,8 +68,8 @@ num_threads = int(os.getenv('threadsToUse', '')) - 1 #We force to leave 1 thread
 cameraFPS = float(os.getenv('cameraFPS', ''))
 ##############################################################################
 # FACE DETECTOR PARAMETERS #
-minNeighborsParam = 3
-scaleFactorParam = 1.1
+minNeighborsParam = int(os.getenv('minNeighborsParam', ''))
+scaleFactorParam = float(os.getenv('scaleFactorParam', ''))
 ############################
 # GET DATETIME DATA #
 today = date.today().strftime("%d/%m/%Y")
@@ -93,19 +98,19 @@ q = queue.Queue()
 options4k = {"CAP_PROP_FRAME_WIDTH ":3840, "CAP_PROP_FRAME_HEIGHT":2160, "CAP_PROP_FPS ":cameraFPS}
 optionsHD = {"CAP_PROP_FRAME_WIDTH ":1920, "CAP_PROP_FRAME_HEIGHT":1080, "CAP_PROP_FPS ":cameraFPS}
 ######################################################################################################
-if LOCAL_LAB:
-    DEBUG_CAM = str('rtsp://practia:global@192.168.1.110:5554/video/h264')
+if PRACTIA_LAB=='True':
+    DEBUG_CAM = str('rtsp://practia:global@192.168.93.16:5554/video/h264')
 else:
     DEBUG_CAM = str('rtsp://practia:global@192.168.88.13:5554/video/h264')
 
-if DEBUG_MODE:
-    logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.DEBUG)
+if DEBUG_MODE=='True':
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s: %(message)s")
 else:
-    logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s: %(message)s")
 ######################################################################################################
 
 
-if DEBUG_MODE:
+if DEBUG_MODE=='True':
     logging.debug('CREATING LABORATORY CAMERA STREAMING...')
     try:
         testingCamera = CamGear(source=DEBUG_CAM, logging = True, **optionsHD).start()
@@ -196,7 +201,11 @@ def checkSchedule(status):
     }
     client = cosmos_client.CosmosClient(str(scheduleUrl), {'masterKey': str(scheduleKey)})
     connectionStringCosmosDB = "dbs/" + str(databaseIDCosmosDB) + "/colls/" + str(containerIDCosmosDB)
-    results = list(client.QueryItems(connectionStringCosmosDB, QUERY, FEEDOPTIONS))
+    results = 0
+    try:
+        results = list(client.QueryItems(connectionStringCosmosDB, QUERY, FEEDOPTIONS))
+    except:
+        pass
     if len(results) > 0:
         df = json_normalize(results)
         for y in range(len(df['profesor.itinerario'])):
@@ -236,7 +245,7 @@ def checkSchedule(status):
     return (state, finClase, timeoutInMinutes, FPS)
 
 def faceCutter(proc, gray, countFace, captureTime):
-    gridX = 7
+    gridX = 15
     gridY= 4
     zero = "0"  
     stepT = int(proc.shape[0]/gridY) 
@@ -249,7 +258,7 @@ def faceCutter(proc, gray, countFace, captureTime):
     new_im_w = gridX*img_w+m_x*gridX
     new_im_h = gridY*img_h+m_y*gridY
     new_im = Image.new('RGB', (new_im_w, new_im_h))
-    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam, minSize=(40,40),flags=cv2.CASCADE_SCALE_IMAGE)
+    faces = face_detection.detectMultiScale(gray,scaleFactor=scaleFactorParam,minNeighbors=minNeighborsParam, minSize=(32,32),flags=cv2.CASCADE_SCALE_IMAGE)
     for (x, y, w, h) in faces:
         croppedFace = proc[y:y+h, x:x+w]
         croppedFace = cv2.resize(croppedFace, (img_w, img_h), interpolation = cv2.INTER_AREA)
@@ -327,7 +336,7 @@ def beginRecord(timeOutParameter, FPS):
             pass
         now = datetime.now()
         exactTime = int(float(datetime.timestamp(now))*1000)
-        if (frame1 != None) and (frame2 != None):
+        if (frame1 is not None) and (frame2 is not None):
             logging.debug('Taking picture with 2 cameras...')
             #frame2 = cv2.resize(frame2, (1920, 1080), interpolation = cv2.INTER_AREA)
             passingPicture = np.concatenate((frame1, frame2), axis = 1)
@@ -355,8 +364,10 @@ def manInCharge():
     global lastNombreCurso
     global timeoutFlag
     global fpsCounter
+    global stopWatch
     while True:
         if (state == False):
+            stopWatch = datetime.now()
             recording, horarioFinClase, timeoutInMinutes, FPS = checkSchedule(state)
             state = recording #it's True when the class start
         while ((timeoutFlag==False) and (recording == True)):

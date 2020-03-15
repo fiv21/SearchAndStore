@@ -58,7 +58,7 @@
         },
         "modules": {
           "FaceDetector": {
-            "version": "33.2",
+            "version": "32.2",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -151,22 +151,22 @@
               }
             },
             "settings": {
-              "image": "${MODULES.FaceDetector}",
+              "image": "${MODULES.FaceDetector.arm32v7}",
               "createOptions": {}
             }
           },
           "LogsModule": {
-            "version": "7.2",
+            "version": "5.5",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
             "settings": {
-              "image": "${MODULES.LogsModule}",
+              "image": "${MODULES.LogsModule.arm32v7}",
               "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8080/tcp\":[{\"HostPort\":\"8080\"}]}}}"
             }
           },
           "ScheduleNewClass": {
-            "version": "8.2",
+            "version": "7.7",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",
@@ -191,12 +191,12 @@
               }
             },
             "settings": {
-              "image": "${MODULES.ScheduleNewClass}",
+              "image": "${MODULES.ScheduleNewClass.arm32v7}",
               "createOptions": "{\"HostConfig\":{\"PortBindings\":{\"8086/tcp\":[{\"HostPort\":\"8086\"}]}}}"
             }
           },
           "blobiniotedgedevice": {
-            "version": "6.2",
+            "version": "5.2",
             "type": "docker",
             "status": "running",
             "restartPolicy": "always",

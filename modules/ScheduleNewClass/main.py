@@ -37,15 +37,16 @@ DEVICEID = str(os.environ["IOTEDGE_DEVICEID"])
 value1CamaraIP = os.getenv('value1CamaraIP', '')
 value2CamaraIP = os.getenv('value2CamaraIP', '')
 
-ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1', '10.0.80.10', '192.168.1.165', '192.168.88.30', '192.168.88.4']
+ip_whitelist = ['localhost', '127.0.0.1', '172.18.0.1', '10.0.80.10', '192.168.1.254', '172.16.35.9', '192.168.88.4']
 
 
 def valid_ip():
     client = request.remote_addr
-    if client in ip_whitelist:
+    return True
+"""     if client in ip_whitelist:
         return True
     else:
-        return False
+        return False """
 
 
 
@@ -58,10 +59,10 @@ def getJSONexample():
         "fpsRate": "1",
         "camarasIP": {
             "MAC1": {
-                "value": "00:00:00:00:00:00"
+                "value": "E4:F1:4C:15:8F:12"
             },
             "MAC2": {
-                "value": "00:00:00:00:00:00"
+                "value": "E4:F1:4C:15:8F:18"
             }
         },
         "profesor": {
